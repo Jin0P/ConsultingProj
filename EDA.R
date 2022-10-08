@@ -88,6 +88,13 @@ geom_point() +   coord_flip() +
 # categorical PCA? 
 apply(EDA[,c(20:41)],2,sum) # using BMI more make sense.. 
 
+
+# Jason code 
+library(ggcorrplot)
+comorb_2 = EDA[,c(20, 24:38)] 
+ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients who underwent MUA")
+
+
 # The # days between 2 TKAs 
 EDA<- EDA %>% mutate(Days2TKA= as.integer(difftime(`Date of contralateral TKA`,surgery_date, units = "days")))
 
@@ -110,9 +117,7 @@ ggplot(data = EDA) +
   geom_bar(mapping = aes(x = MUA_type, fill=VarusValgus1), position = "dodge") + 
   labs(x = NULL, y = NULL, fill = NULL, title = "Varus/Valgus (normal=0, varus=1, valgus=2)" )
 
-
 # The # days between TKA & MUA  
 EDA<- EDA %>% mutate(DaysTKAMUA= as.integer(difftime(`Date of MUA`,surgery_date, units = "days")))
-
 
 
