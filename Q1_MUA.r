@@ -7,7 +7,11 @@ Q1_table <- table(Q1_data)
 rownames(Q1_table) <- c("No MUA", "MUA")
 colnames(Q1_table) <- c("No C_MUA", "C_MUA")
 
+<<<<<<< HEAD
 #mosaicplot
+=======
+#mosicplot
+>>>>>>> 58974c3c4d3b3f70585510b5a11b0785267c83ef
 mosaicplot(Q1_table, main = "MUA plot", color = TRUE)
 
 # fisher's exact test for count data 
