@@ -11,7 +11,7 @@ EDA$MUA_type <- factor(EDA$MUA_type, levels = c("MUA","C_MUA","Both"))
 
 # overall summary
 
-EDA %>% select(sex, MUA_type, age,BMI) %>% summary()
+EDA %>% select(sex, MUA_type, age) %>% summary()  #need to add BMI 
 EDA %>% count(sex)
 
 
