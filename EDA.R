@@ -3,6 +3,7 @@ library(ggplot2)
 library(tidyverse)
 library(dplyr)
 library(gtsummary)
+library(ggcorrplot)
 ####################################################################### 
 # Data Setup
 #######################################################################
@@ -36,8 +37,6 @@ EDA$DateMUA<- as.Date(as.integer(EDA$DateMUA),origin= "1899-12-30")
 EDA<- EDA %>% mutate(DaysTKAMUA= difftime(DateMUA,surgery_date, units = "days"))
 
 
-
-
 #############################################################################################
 ##### sex, age, race, ethnicity, insurance summary
 EDA_1 <- EDA %>%  select(sex, age, race, ethnicity,Insurance, MUA_type)
@@ -58,7 +57,8 @@ ggplot(data = EDA, aes(x = age, y = MUA_type)) +
   geom_boxplot(aes(fill=MUA_type))+
   geom_point(aes(group=MUA_type), position = position_dodge(preserve = "single")) +
   coord_flip()+
-  labs(y = NULL, fill=NULL)
+  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
 
 # race
 EDA %>% group_by(MUA_type) %>% tbl_summary()
@@ -94,7 +94,8 @@ ggplot(data = EDA, aes(x = BMI, y = MUA_type)) +
   geom_boxplot(aes(fill=MUA_type))+
   geom_point(aes(group=MUA_type), position = position_dodge(preserve = "single")) +
   coord_flip()+
-  labs(y = NULL, fill=NULL)
+  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
 
 # tobacco 
 ggplot(data = EDA) +
@@ -114,8 +115,7 @@ colnames(comorbities) <- c("MUA_type","# of diagnosed Disease")
 comorbities %>% tbl_summary(by = MUA_type) %>% bold_labels()
 
 # Jason code 
-library(ggcorrplot)
-names(EDA)
+#library(ggcorrplot)
 comorb_2 = EDA[,c(20,24:27, 29:38,71:72)] # Diabetes_cc is included in Diabetes_no_cc
 ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients who underwent MUA",
   colors = c("#6D9EC1", "white", "#E46726"),
@@ -123,8 +123,8 @@ ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients
   )
 # I really don't think we can find any meaningful relationship in these information.
 
-########################### about procedure EDA ###############################
-
+##################################################################################
+#### about procedure EDA
 
 # " Length of stay (days)" 
 ggplot(data = EDA) +
@@ -132,13 +132,30 @@ ggplot(data = EDA) +
   coord_flip()
 
 ggplot(data = EDA,mapping = aes(x = StayDays, y = MUA_type, color=MUA_type)) +
-  geom_point() +   coord_flip()
+  geom_boxplot() +   coord_flip()  ##??????
 
+ggplot(data = EDA, aes(x = StayDays, y=MUA_type)) +
+  geom_boxplot(aes(fill=MUA_type))+
+  geom_point(aes(group=MUA_type), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
 
 # operation time
 ggplot(data = EDA,mapping = aes(x =OperationT, y = MUA_type, color=MUA_type)) +
 geom_point() +   coord_flip() + 
   labs(x = "Operation time", y = NULL, color = NULL)
+
+ggplot(data = EDA, aes(x = OperationT, y=MUA_type)) +
+  geom_boxplot(aes(fill=MUA_type))+
+  geom_point(aes(group=MUA_type), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
+# varus/valgus ((normal=0, varus=1, valgus=2))
+ggplot(data = EDA) +
+  geom_bar(mapping = aes(x = MUA_type, fill=VarusValgus1), position = "dodge") + 
+  labs(x = NULL, y = NULL, fill = NULL, title = "Varus/Valgus (normal=0, varus=1, valgus=2)" )
+
 
 # The # days between 2 TKAs 
 #EDA<- EDA %>% mutate(Days2TKA= as.integer(difftime(`Date of contralateral TKA`,surgery_date, units = "days")))
@@ -151,11 +168,6 @@ ggplot(data = EDA,mapping = aes(x =Days2TKA, y = MUA_type, color=MUA_type)) +
   geom_boxplot() +   coord_flip() + 
   labs(x = "Days2TKA", y = NULL, color = NULL)
 
-# varus/valgus ((normal=0, varus=1, valgus=2))
-
-ggplot(data = EDA) +
-  geom_bar(mapping = aes(x = MUA_type, fill=VarusValgus1), position = "dodge") + 
-  labs(x = NULL, y = NULL, fill = NULL, title = "Varus/Valgus (normal=0, varus=1, valgus=2)" )
 
 # The # days between TKA & MUA  
 
