@@ -12,6 +12,9 @@ EDA <- read_excel("DeID2.xlsx", sheet = "2TKA_w.syn", range = cell_rows(1:34))
 EDA <- EDA %>% mutate(MUA_type = ifelse(MUA==1&C_MUA!=1, 
   "MUA",ifelse(MUA!=1&C_MUA==1, "C_MUA","Both")))
 EDA$MUA_type <- factor(EDA$MUA_type, levels = c("MUA","C_MUA","Both"))
+EDA$C_MUA<-factor(EDA$C_MUA)
+EDA$MUA<- factor(EDA$MUA)
+
 
 EDA$race <- ifelse(EDA$race == "American Indian", "Other",EDA$race)
 
@@ -36,6 +39,11 @@ EDA$DateMUA <- ifelse(EDA$DateMUA == "other knee", NA,EDA$DateMUA)
 EDA$DateMUA<- as.Date(as.integer(EDA$DateMUA),origin= "1899-12-30")
 EDA<- EDA %>% mutate(DaysTKAMUA= difftime(DateMUA,surgery_date, units = "days"))
 
+names(EDA)[c(49,52,54)] <- c("PreROM1", "PostROM11","PostROM12") #PreROM1 : PreROM before 1st TKA, PostROM11 is 1st post ROM after 1st TKA, PostROM12 is 2nd post ROM after 1st TKA
+EDA <- EDA %>% mutate(D_PrePostROM= PostROM11-PreROM1) 
+
+EDA$ID <- c(1:33)
+level_order <- c("PreROM1","PostROM11") 
 
 #############################################################################################
 ##### sex, age, race, ethnicity, insurance summary
@@ -160,50 +168,81 @@ ggplot(data = EDA) +
 # The # days between 2 TKAs 
 #EDA<- EDA %>% mutate(Days2TKA= as.integer(difftime(`Date of contralateral TKA`,surgery_date, units = "days")))
 
-ggplot(data = EDA,mapping = aes(x =Days2TKA, y = MUA_type, color=MUA_type)) +
-  geom_point() +   coord_flip() + 
-  labs(x = "the # days between 2 TKAs", y = NULL, color = NULL)
+ggplot(data = EDA, aes(x = Days2TKA, y = MUA_type)) +
+  geom_boxplot(aes(color=MUA_type))+
+  geom_point(aes(group=MUA_type), position = position_dodge(preserve = "single")) +
+  coord_flip()+
+  labs(y = NULL, color=NULL)+ theme(legend.position="none")
+# 17 out of 20 MUA only patient got MUA before the 2nd TKA 
+# 2 out of 20 MUA only patient got MUA on the 2nd TKA surgery day
+# 1 out of 20 MUA only patient got MUA after the 2nd TKA
+# I think this plot is meaningless. 
 
-ggplot(data = EDA,mapping = aes(x =Days2TKA, y = MUA_type, color=MUA_type)) +
-  geom_boxplot() +   coord_flip() + 
-  labs(x = "Days2TKA", y = NULL, color = NULL)
+
+# Q The number of days between two TKAs is a risk factor of contralateral TKA? 
+EDA$C_MUA<- as.factor(EDA$C_MUA)
+ggplot(data = EDA, aes(x = Days2TKA, y = C_MUA)) +
+  geom_boxplot(aes(color=C_MUA))+
+  geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
+  coord_flip()+
+  labs(y = c("0:No C_MUA            1:C_MUA"), color=NULL)+ theme(legend.position="none")
 
 
-# The # days between TKA & MUA  
-
+###### The # days between TKA & MUA  <- what's the point? .. forget about it. 
 #EDA$DateMUA <- ifelse(EDA$DateMUA == "other knee", NA,EDA$DateMUA)
 #EDA$DateMUA<- as.Date(as.integer(EDA$DateMUA),origin= "1899-12-30")
 #EDA<- EDA %>% mutate(DaysTKAMUA= difftime(DateMUA,surgery_date, units = "days"))
-
-ggplot(data = EDA,mapping = aes(x =DaysTKAMUA, y = MUA_type, color=MUA_type)) +
-  geom_point() +   coord_flip() + 
-  labs(x = "the # days between TKA and MUA", y = NULL, color = NULL)
-
+#
+#ggplot(data = EDA,mapping = aes(x =DaysTKAMUA, y = MUA_type, color=MUA_type)) +
+#  geom_point() +   coord_flip() + 
+#  labs(x = "the # days between TKA and MUA", y = NULL, color = NULL)
 
 # The difference between pre-op ROM and post-op ROM (1)
-names(EDA)
-names(EDA)[c(49,52,54)] <- c("PreROM1", "PostROM11","PostROM12")
-EDA <- EDA %>% mutate(D_PrePostROM= PostROM11-PreROM1)
-EDA$MUA <- as.factor(EDA$MUA)
-EDA$C_MUA <- as.factor(EDA$C_MUA)
+# data setup 
+#EDA <- EDA %>% mutate(D_PrePostROM= PostROM11-PreROM1) PreROM1 : PreROM before 1st TKA, PostROM11 is 1st post ROM after 1st TKA
 
 # Q: is there any relation between the difference between preROM1-PostROM11 and MUA?
+ggplot(data = EDA,mapping = aes(PreROM1,PostROM11))+ #, y = MUA, color=MUA)) +
+  geom_line() + coord_flip()  
+  #labs(x = "Post ROM - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)
 
-ggplot(data = EDA,mapping = aes(x =D_PrePostROM, y = MUA, color=MUA)) +
+ggplot(data = EDA,mapping = aes(D_PrePostROM, y = MUA, color=MUA)) +
   geom_point() + coord_flip() + 
-  labs(x = "Post ROM - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)
+  labs(x = "Post ROM - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)+
+  facet_grid(cols=MUA)
 
+names(EDA)
+EDA %>% 
+pivot_longer(c(PreROM1,PostROM11), names_to = "time", values_to = "ROM") %>%
+ggplot(aes(x=time, y= ROM)) +
+  geom_point() #+ coord_flip() 
 
-#### The difference between 135 - pre-op ROM
-EDA<-EDA %>% mutate(D_135preROM= 135-PreROM1)
+#EDA$ID <- c(1:33)
+level_order <- c("PreROM1","PostROM11") 
+EDA %>% 
+  mutate(sign= ifelse(PreROM1>PostROM11,"Down","Up" )) %>% 
+  select(ID,sign,PreROM1,PostROM11,MUA_type) %>% 
+  pivot_longer(c(PreROM1,PostROM11), names_to = "time", values_to = "ROM") %>% 
+  ggplot(aes(x=ROM, y=time, group = ID, color = sign), position = "dodge") +
+  geom_line(size = 0.5) + 
+  scale_y_discrete(limits = level_order)+
+  geom_vline(aes(xintercept=135), col = "blue")+
+  coord_flip() +
+  facet_wrap(facets =  vars(MUA_type))
+
+# I think this plot is better. 
+EDA %>% 
+  mutate(sign= ifelse(PreROM1>PostROM11,"Down","Up" )) %>% 
+  select(ID,sign,PreROM1,PostROM11,MUA_type,MUA) %>% 
+  pivot_longer(c(PreROM1,PostROM11), names_to = "time", values_to = "ROM") %>% 
+  ggplot(aes(x=ROM, y=time, group = ID, color = sign), position = "dodge") +
+  geom_line(size = 0.5) + 
+  scale_y_discrete(limits = level_order)+
+  geom_vline(aes(xintercept=135), col = "blue")+
+  coord_flip() +
+  facet_wrap(facets =  vars(MUA))+
+  labs(y = NULL, color=NULL, title = "MUA vs the difference between preROM and postROM ")+
+  theme(legend.position="none")
 
 # Q: is there any relation between the difference between 135-preROM1 and MUA?
-ggplot(data = EDA,mapping = aes(x =D_135preROM, y = MUA, color=MUA)) +
-  geom_point() + coord_flip() + 
-  labs(x = "135 - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)
-
 # Q: is there any relation between the difference between 135-preROM1 and C_MUA?
-ggplot(data = EDA,mapping = aes(x =D_135preROM, y = C_MUA, color=C_MUA)) +
-  geom_point() + coord_flip() + 
-  labs(x = "135 - Pre ROM", y = "0: No C_MUA, 1: C_MUA", color = NULL)
-
