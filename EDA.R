@@ -43,13 +43,18 @@ names(EDA)[c(49,52,54)] <- c("PreROM1", "PostROM11","PostROM12") #PreROM1 : PreR
 EDA <- EDA %>% mutate(D_PrePostROM= PostROM11-PreROM1) 
 
 EDA$ID <- c(1:33)
-level_order <- c("PreROM1","PostROM11") 
+level_order <- c("PreROM1","PostROM11","PreROM2","PostROM21")  
+
+names(EDA)[c(62,65,67)] <- c("PreROM2", "PostROM21","PostROM22") #PreROM1 : PreROM before 1st TKA, PostROM11 is 1st post ROM after 1st TKA, PostROM12 is 2nd post ROM after 1st TKA
+level_order2 <- c("PreROM2","PostROM21") 
+
+
 
 #############################################################################################
 ##### sex, age, race, ethnicity, insurance summary
 EDA_1 <- EDA %>%  select(sex, age, race, ethnicity,Insurance, MUA_type)
-EDA_1 %>% tbl_summary(by = MUA_type, 
-  statistic = c(age)~"{mean}({min},{max})")  %>% 
+EDA_1 %>% select(Insurance, MUA_type) %>% 
+  tbl_summary(by = MUA_type) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
   add_n() %>% modify_header(label ~ "**Variable**") %>%
   bold_labels()
 
@@ -60,7 +65,8 @@ ggplot(data = EDA) +
     labs(x = NULL)
 
 # age
-EDA %>% group_by(MUA_type) %>% summarise(range(age))
+EDA %>% group_by(MUA_type) %>% summarise(age)
+
 ggplot(data = EDA, aes(x = age, y = MUA_type)) +
   geom_boxplot(aes(fill=MUA_type))+
   geom_point(aes(group=MUA_type), position = position_dodge(preserve = "single")) +
@@ -69,15 +75,14 @@ ggplot(data = EDA, aes(x = age, y = MUA_type)) +
 
 
 # race
-EDA %>% group_by(MUA_type) %>% tbl_summary()
 ggplot(data = EDA) +
   geom_bar(mapping = aes(fill = race, x=MUA_type),position = position_dodge(preserve = "single"))+
-  labs(x = NULL)
+  labs(x = NULL, title = "Race")
 
 # ethnicity
 ggplot(data = EDA) +
   geom_bar(mapping = aes(x = MUA_type, fill=ethnicity),position = position_dodge(preserve = "single"))+
-  labs(x = NULL) 
+  labs(x = NULL, title = "Ethnicity" ) 
 
 # financial_class (insurance type) 
 #EDA$Insurance <- ifelse(EDA$Insurance == c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp"), "Private",
@@ -91,10 +96,12 @@ ggplot(data = EDA) +
 ############### health info EDA ##################
 ##### BMI, tobacco, ASA summary
 EDA_2 <- EDA %>%  select(BMI, tobacco, ASA,  MUA_type)
-EDA_2 %>% tbl_summary(by = MUA_type, 
-  statistic = c(BMI)~"{mean}({min},{max})")  %>% 
-  add_n() %>% modify_header(label ~ "**Variable**") %>%
-  bold_labels()
+EDA_2 %>% select(tobacco, ASA, MUA_type) %>% 
+  tbl_summary(by = MUA_type) %>%  #, statistic = c(BMI)~"{mean}({min},{max})")  %>% 
+  add_n() %>% 
+  modify_header(label ~ "**Variable**") %>%
+  bold_labels()  
+  
 
 # BMI (https://www.cdc.gov/healthyweight/assessing/index.html#:~:text=If%20your%20BMI%20is%20less,falls%20within%20the%20obese%20range.)
 # if your BMI is higher than 30, obese range. If your BMI is 25.0 to 29.9, it falls within the overweight range.
@@ -124,6 +131,11 @@ comorbities %>% tbl_summary(by = MUA_type) %>% bold_labels()
 
 # Jason code 
 #library(ggcorrplot)
+
+EDA$C_MUA<-as.integer(EDA$C_MUA)
+EDA$MUA<- as.integer(EDA$MUA)
+
+
 comorb_2 = EDA[,c(20,24:27, 29:38,71:72)] # Diabetes_cc is included in Diabetes_no_cc
 ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients who underwent MUA",
   colors = c("#6D9EC1", "white", "#E46726"),
@@ -137,8 +149,9 @@ ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients
 ##### "length pf stay", operation time, vagus/valgus,2TKA, 2ROM summary
 names(EDA)
 EDA_3 <- EDA %>%  select(OperationT,VarusValgus1,Days2TKA,PreROM1,PostROM11,MUA_type)
-EDA_3 %>% tbl_summary(by = MUA_type, 
-  statistic = c(OperationT,Days2TKA,PreROM1,PostROM11)~"{mean}({min},{max})")  %>% 
+EDA_3 %>% select(VarusValgus1, MUA_type) %>% 
+  tbl_summary(by = MUA_type) %>% 
+  #statistic = c(OperationT,Days2TKA,PreROM1,PostROM11)~"{mean}({min},{max})")  %>% 
   add_n() %>% modify_header(label ~ "**Variable**") %>%
   bold_labels()
 
@@ -158,17 +171,17 @@ ggplot(data = EDA, aes(x = StayDays, y=MUA_type)) +
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
 
 # operation time
-ggplot(data = EDA, aes(x = OperationT, y=MUA)) +
-  geom_boxplot(aes(fill=MUA))+
-  geom_point(aes(group=MUA), position = position_dodge(width = 0.75)) +
-  coord_flip()+
-  labs(x = "1st TKA Operation Time",y = NULL, fill=NULL)+ theme(legend.position="none")
-
 ggplot(data = EDA, aes(x = OperationT, y=MUA_type)) +
   geom_boxplot(aes(fill=MUA_type))+
   geom_point(aes(group=MUA_type), position = position_dodge(width = 0.75)) +
   coord_flip()+
-  labs(x = "1st TKA Operation Time",y = "0: NO MUA,          1: MUA", fill=NULL)+ theme(legend.position="none")
+  labs(x = "1st TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
+
+ggplot(data = EDA, aes(x = OperationT, y=MUA)) +
+  geom_boxplot(aes(fill=MUA))+
+  geom_point(aes(group=MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(x = "1st TKA Operation Time (mins)",y = "0: NO MUA,          1: MUA", fill=NULL)+ theme(legend.position="none")
 
 
 
@@ -196,10 +209,11 @@ ggplot(data = EDA, aes(x = Days2TKA, y = MUA_type)) +
 # Q The number of days between two TKAs is a risk factor of contralateral TKA? 
 EDA$C_MUA<- as.factor(EDA$C_MUA)
 ggplot(data = EDA, aes(x = Days2TKA, y = C_MUA)) +
-  geom_boxplot(aes(color=C_MUA))+
+  geom_boxplot(aes(fill=C_MUA))+
   geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
   coord_flip()+
-  labs(y = c("0:No C_MUA            1:C_MUA"), color=NULL)+ theme(legend.position="none")
+  labs(y = c("0:No C_MUA            1:C_MUA"), fill=NULL, x = "The number of days between two TKAs")+
+  theme(legend.position="none")
 
 
 ###### The # days between TKA & MUA  <- what's the point? .. forget about it. 
@@ -216,20 +230,6 @@ ggplot(data = EDA, aes(x = Days2TKA, y = C_MUA)) +
 #EDA <- EDA %>% mutate(D_PrePostROM= PostROM11-PreROM1) PreROM1 : PreROM before 1st TKA, PostROM11 is 1st post ROM after 1st TKA
 
 # Q: is there any relation between the difference between preROM1-PostROM11 and MUA?
-ggplot(data = EDA,mapping = aes(PreROM1,PostROM11))+ #, y = MUA, color=MUA)) +
-  geom_line() + coord_flip()  
-  #labs(x = "Post ROM - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)
-
-ggplot(data = EDA,mapping = aes(D_PrePostROM, y = MUA, color=MUA)) +
-  geom_point() + coord_flip() + 
-  labs(x = "Post ROM - Pre ROM", y = "0: No MUA, 1: MUA", color = NULL)+
-  facet_grid(cols=MUA)
-
-names(EDA)
-EDA %>% 
-pivot_longer(c(PreROM1,PostROM11), names_to = "time", values_to = "ROM") %>%
-ggplot(aes(x=time, y= ROM)) +
-  geom_point() #+ coord_flip() 
 
 #EDA$ID <- c(1:33)
 level_order <- c("PreROM1","PostROM11") 
@@ -255,8 +255,26 @@ EDA %>%
   geom_vline(aes(xintercept=135), col = "blue")+
   coord_flip() +
   facet_wrap(facets =  vars(MUA))+
-  labs(y = NULL, color=NULL, title = "MUA vs the difference between preROM and postROM ")+
-  theme(legend.position="none")
+  labs(y = NULL, x = "Range Of Motion", color=NULL, title = "0: No MUA             1: MUA")
+
+
+EDA %>% 
+  mutate(sign= ifelse(PreROM2>PostROM21,"Down","Up" )) %>% 
+  select(ID,sign,PreROM2,PostROM21,MUA_type,C_MUA) %>% 
+  pivot_longer(c(PreROM2,PostROM21), names_to = "time", values_to = "ROM") %>% 
+  ggplot(aes(x=ROM, y=time, group = ID, color = sign), position = "dodge") +
+  geom_line(size = 0.5) + 
+  scale_y_discrete(limits = level_order2)+
+  geom_vline(aes(xintercept=135), col = "blue")+
+  coord_flip() +
+  facet_wrap(facets =  vars(C_MUA))+
+  labs(y = NULL, x = "Range Of Motion", color=NULL, title = "0: No C_MUA             1: C_MUA")
+
+
+
+
+
+
 
 # Q: is there any relation between the difference between 135-preROM1 and MUA?
 # Q: is there any relation between the difference between 135-preROM1 and C_MUA?
