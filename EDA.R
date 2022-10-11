@@ -89,7 +89,7 @@ ggplot(data = EDA) +
 
 
 ############### health info EDA ##################
-##### BMI, tobacco, ASA, ethnicity, insurance summary
+##### BMI, tobacco, ASA summary
 EDA_2 <- EDA %>%  select(BMI, tobacco, ASA,  MUA_type)
 EDA_2 %>% tbl_summary(by = MUA_type, 
   statistic = c(BMI)~"{mean}({min},{max})")  %>% 
@@ -134,6 +134,15 @@ ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients
 ##################################################################################
 #### about procedure EDA
 
+##### "length pf stay", operation time, vagus/valgus,2TKA, 2ROM summary
+names(EDA)
+EDA_3 <- EDA %>%  select(OperationT,VarusValgus1,Days2TKA,PreROM1,PostROM11,MUA_type)
+EDA_3 %>% tbl_summary(by = MUA_type, 
+  statistic = c(OperationT,Days2TKA,PreROM1,PostROM11)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+
 # " Length of stay (days)" 
 ggplot(data = EDA) +
   geom_point(mapping = aes(x = StayDays, y = MUA_type, color=MUA_type))+
@@ -149,15 +158,20 @@ ggplot(data = EDA, aes(x = StayDays, y=MUA_type)) +
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
 
 # operation time
-ggplot(data = EDA,mapping = aes(x =OperationT, y = MUA_type, color=MUA_type)) +
-geom_point() +   coord_flip() + 
-  labs(x = "Operation time", y = NULL, color = NULL)
+ggplot(data = EDA, aes(x = OperationT, y=MUA)) +
+  geom_boxplot(aes(fill=MUA))+
+  geom_point(aes(group=MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(x = "1st TKA Operation Time",y = NULL, fill=NULL)+ theme(legend.position="none")
 
 ggplot(data = EDA, aes(x = OperationT, y=MUA_type)) +
   geom_boxplot(aes(fill=MUA_type))+
   geom_point(aes(group=MUA_type), position = position_dodge(width = 0.75)) +
   coord_flip()+
-  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+  labs(x = "1st TKA Operation Time",y = "0: NO MUA,          1: MUA", fill=NULL)+ theme(legend.position="none")
+
+
+
 
 # varus/valgus ((normal=0, varus=1, valgus=2))
 ggplot(data = EDA) +
