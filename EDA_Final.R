@@ -64,6 +64,7 @@ ggplot(aes(x = Group2, y = pct, fill = Group2, label = scales::percent(pct))) +
   theme(legend.position="none")
 
 ### age
+
 ggplot(data = EDA, aes(x = age_C_TKA, y = C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
  # geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
@@ -97,14 +98,31 @@ EDA %>% filter(age_C_TKA <50 | age_C_TKA >70) %>%  count(C_MUA) %>%  # No:241/Ye
 
 
 
-
-
-
-
 ### race (I need idea how to organize it better)
+EDA$redu_race <- ifelse(EDA$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian"), "Ohter",EDA$race)
+
 ggplot(data = EDA) +
   geom_bar(mapping = aes(fill = race, x=MUA_type),position = position_dodge(preserve = "single"))+
   labs(x = NULL, title = "Race")
+
+ggplot(data = EDA) +
+  geom_bar(mapping = aes(fill = redu_race, x=MUA_type),position = position_dodge(preserve = "single"))+
+  labs(x = NULL, title = "Race")
+
+
+# proportion of C_MUA by race 
+EDA %>% group_by(redu_race) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~redu_race) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+
+
 
 
 ### ethnicity (prefers not to answer..?)
