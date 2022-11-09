@@ -31,6 +31,11 @@ EDA$Insurance_C_TKA <-
       ifelse(EDA$Insurance_C_TKA %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
 
 
+EDA$date_diff =as.Date(EDA$`Date of contralateral TKA`) - as.Date(EDA$surgery_date)
+EDA %>% select(surgery_date,`Date of contralateral TKA`,date_diff)
+EDA$date_diff <- ifelse(EDA$date_diff <0, -EDA$date_diff,EDA$date_diff)
+
+
 
 
 ##################################################
@@ -61,9 +66,40 @@ ggplot(aes(x = Group2, y = pct, fill = Group2, label = scales::percent(pct))) +
 ### age
 ggplot(data = EDA, aes(x = age_C_TKA, y = C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
-  geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
+ # geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
   coord_flip()+
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
+
+# proportion of C_MUA when the patients are in 50s or 60s 8/391 : 0.02046036
+EDA %>% filter(age_C_TKA >50 & age_C_TKA <70) %>%  count(C_MUA) %>% # No:391/Yes: 8
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA", y=NULL)+
+  theme(legend.position="none")
+
+# proportion of C_MUA when the patients are in 40s or over 70s  2/241 : 0.008298755
+EDA %>% filter(age_C_TKA <50 | age_C_TKA >70) %>%  count(C_MUA) %>%  # No:241/Yes: 2
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA", y=NULL)+
+  theme(legend.position="none")
+
+
+
+
+
+
 
 ### race (I need idea how to organize it better)
 ggplot(data = EDA) +
@@ -252,4 +288,42 @@ ggplot(data = EDA, aes(x = op_time_C_TKA, y=C_MUA)) +
   labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
 
 
+### The # of dates between TKAs
+ggplot(data = EDA, aes(x = date_diff, y=C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()
+  #labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
 
+EDA %>%  group_by(C_MUA) %>% summarise(mean(date_diff), median(date_diff))
+
+EDA %>% filter(date_diff < 365) %>% 
+  ggplot(aes(x = date_diff, y=C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()
+
+
+# proportion of getting C_MAU when the # of dates between 2TKA < 1yr 
+EDA %>% filter(date_diff < 365) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+
+
+# proportion of getting C_MAU when the patients got bilateral TKA
+EDA %>% filter(date_diff == 0) %>%  count(C_MUA, MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA", y=NULL)+
+  theme(legend.position="none")
