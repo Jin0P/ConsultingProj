@@ -105,6 +105,14 @@ mua_glm1 = glm(C_MUA ~ MUA +age_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
 MUA_data1$Fac_age_C_TKA <- ifelse((MUA_data1$age_C_TKA<50|MUA_data1$age_C_TKA>70),"less50 or over 70s","50s,60s")
+
+MUA_data1$Fac_age_C_TKA <- ifelse(MUA_data1$age_C_TKA<50,"less50",
+                                   ifelse(MUA_data1$age_C_TKA<60, "50s",
+                                     ifelse(MUA_data1$age_C_TKA<70, "60s","over70s")))
+
+
+
+
 mua_glm1 = glm(C_MUA ~ Fac_age_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 mua_glm1 = glm(C_MUA ~ MUA +Fac_age_C_TKA, data= MUA_data1, family = "binomial")
