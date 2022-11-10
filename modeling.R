@@ -54,7 +54,7 @@ exp(mua_glm$coefficients[-1])  # 0.1428586/0.01104144
 cor(MUA_data1$C_MUA_bi,MUA_data1$MUA_bi)
 
 ###################################################################################
-### + Q2) the # between 2 TKAs  - No 
+### + Q2) is the # between 2 TKAs a risk factor? - No 
 ###################################################################################
 #Model with  MUA predicting C_mua with time
 
@@ -164,7 +164,7 @@ summary(mua_glm1)
 
 
 
-#####3######################  ethnicity variable
+############################  ethnicity variable
 MUA_data1$ethnicity <- ifelse(MUA_data1$ethnicity %in% c("Prefers not to answer"), "Non-Hispanic Origin",MUA_data1$ethnicity)
 
 
@@ -279,6 +279,11 @@ los+
 mua_glm1 = glm(C_MUA ~  los_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
+mua_glm1 = glm(C_MUA ~  MUA + los_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+
 mua_glm1 = glm(MUA ~  los, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
@@ -324,6 +329,7 @@ paste0(round(lasso.coef@x,4),"X",lasso.coef@i, collapse=" + ")
 
 library(ggcorrplot)
 ggcorrplot(cor(cbind(x1matrix, y_vector)),colors = c("#6D9EC1", "white", "#E46726"))
+# the predictor that lasso picked matches with correlation between C_MUA and diseases
 
 ################################### sum up 
 
@@ -332,6 +338,8 @@ mua_glm <- glm(as.factor(C_MUA_bi) ~ as.factor(MUA_bi)+Fac_age_C_TKA+MUA_data1$r
 mua_glm <- glm(C_MUA_bi ~ MUA_bi+Fac_age_C_TKA+MUA_data1$redu_race+los_C_TKA+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm)
 
+mua_glm <- glm(C_MUA_bi ~ MUA_bi+blood_transfusion_C_TKA+los_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
 mua_glm <- glm(C_MUA_bi ~ MUA_bi+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm)
 
