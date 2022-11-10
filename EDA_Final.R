@@ -23,7 +23,6 @@ EDA$Insurance <-
     ifelse(EDA$Insurance %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
       ifelse(EDA$Insurance %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
 
-
 names(EDA)[77] <- c("Insurance_C_TKA")
 EDA$Insurance_C_TKA <- 
   ifelse(EDA$Insurance_C_TKA %in% c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp","Worker's Comp LUHS"), "Private",
@@ -231,6 +230,18 @@ EDA %>% group_by(Insurance_C_TKA) %>%  count(C_MUA) %>%
 
 # BMI (https://www.cdc.gov/healthyweight/assessing/index.html#:~:text=If%20your%20BMI%20is%20less,falls%20within%20the%20obese%20range.)
 # if your BMI is higher than 30, obese range. If your BMI is 25.0 to 29.9, it falls within the overweight range.
+
+EDA %>% select(BMI,MUA ) %>% 
+  tbl_summary(by = MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+   modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+EDA %>% select(bmi_C_TKA,C_MUA ) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+
 # First TKA
 ggplot(data = EDA, aes(x = BMI, y = MUA)) +
   geom_boxplot(aes(fill=MUA))+
@@ -244,6 +255,9 @@ ggplot(data = EDA, aes(x = bmi_C_TKA, y = C_MUA)) +
   #geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
   coord_flip()+
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
+
+
 
 
 #### tobacco 

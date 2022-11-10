@@ -5,6 +5,10 @@ library(readxl)
 library(tidyverse)
 library(tree)
 library(gam)
+library(ggplot2)
+library(glmnet)
+library(fastDummies)
+library(ggcorrplot)
 
 #### data setup
 MUA_data = read_excel("TKAMUA5_IDSET_Nov02.xlsx", sheet = "Final", range = cell_rows(3:668), col_names=TRUE)
@@ -28,11 +32,12 @@ MUA_data1 = MUA_data1[1:665,]
 MUA_data1$C_MUA<- as.factor(MUA_data1$C_MUA)
 MUA_data1$MUA<- as.factor(MUA_data1$MUA)
 
+MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian","Asian"), "Other",MUA_data1$race)
 
 
 
 ###################################################################################
-### Q1) MUA is a risk factor of C_MUA? 
+### Q1) MUA is a risk factor of C_MUA?  - Yes
 ###################################################################################
 
 #Model with  MUA predicting C_mua
@@ -49,7 +54,7 @@ exp(mua_glm$coefficients[-1])  # 0.1428586/0.01104144
 cor(MUA_data1$C_MUA_bi,MUA_data1$MUA_bi)
 
 ###################################################################################
-### + Q2) the # between 2 TKAs 
+### + Q2) the # between 2 TKAs  - No 
 ###################################################################################
 #Model with  MUA predicting C_mua with time
 
@@ -96,7 +101,9 @@ summary(MUA_tree2)  # BTKA is not used in the decision tree.
 
 
 ##############################################################
-#### Q3 sex, age, ....
+#### Q3 sex: No, age(factor): Maybe, race:Maybe, ethnicity: No (str.error >>>>0)
+# Insurance: C_MUA: No, MUA - Yes,  BMI: No, ... los : Maybe 
+#
 #############################################################
 
 ##### add sex variable  - insignificant #######
@@ -271,8 +278,66 @@ los+
 
 mua_glm1 = glm(C_MUA ~  los_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
+
 mua_glm1 = glm(MUA ~  los, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
+
+# hmm
+
+
+############################ operation time 
+
+mua_glm1 = glm(C_MUA ~  op_time_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(MUA ~  op_time, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+
+###########################################################################
+
+#Lasso model  - comorbidities 
+library(glmnet)
+library(fastDummies)
+#Creating dummy matrix for lasso
+#X matrix
+x1matrix = data.matrix(MUA_data1[,c(80:104)]) # ASA, disease, readmission when C_TKA
+#x2matrix = dummy_cols(MUA_data1[,c(6:9,11)]) # sex, age, race, ethnicity, tobaco
+#x2matrix = data.matrix(MUA_data1[,c(6,118,9,74,76,81,78,77,75)]) # sex, redu_race,ethnicity, age_C_TKA,tobacco_C_TKA, op_time_C_TKA, los_C_TKA,Insurance_C_TKA,bmi_C_TKA
+#x22matrix = x2matrix[,-c(1:5)] 
+#xmatrix= cbind(x2matrix,x1matrix)
+#xmatrix= data.matrix(xmatrix)
+
+#Y matrix
+#y_muacount_t = as.matrix((MUA_data1$MUA_count_T))
+y_vector = as.vector(MUA_data1$C_MUA_bi)
+
+#Finding lambda
+k = 5
+set.seed(987)
+cv.lasso<- cv.glmnet(x1matrix, y_vector, alpha=1, family = "binomial")
+lasso.mod = glmnet(x1matrix, y_vector, alpha=1,family = "binomial",lambda=cv.lasso$lambda.min)
+lasso.coef <- predict(lasso.mod, type = "coefficients", s=cv.lasso$lambda.min)
+paste0(round(lasso.coef@x,4),"X",lasso.coef@i, collapse=" + ")
+#-4.5446 + 2.2272 "blood transfusion"
+
+library(ggcorrplot)
+ggcorrplot(cor(cbind(x1matrix, y_vector)),colors = c("#6D9EC1", "white", "#E46726"))
+
+################################### sum up 
+
+names(MUA_data1)
+mua_glm <- glm(as.factor(C_MUA_bi) ~ as.factor(MUA_bi)+Fac_age_C_TKA+MUA_data1$redu_race+los_C_TKA+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
+mua_glm <- glm(C_MUA_bi ~ MUA_bi+Fac_age_C_TKA+MUA_data1$redu_race+los_C_TKA+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+mua_glm <- glm(C_MUA_bi ~ MUA_bi+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+
+
+
 
 
 
@@ -292,28 +357,6 @@ mua_t_glm = zeroinfl(MUA_count_T ~ sex + age+
   , data = MUA_data1, dist= "negbin")
 summary(mua_t_glm)
 
-
-#Lasso model
-library(glmnet)
-library(fastDummies)
-#Creating dummy matrix for lasso
-#X matrix
-x1matrix = data.matrix(MUA_data1[,c(20,23:45)])
-x2matrix = dummy_cols(MUA_data1[,c(6:9,11)])
-x22matrix = x2matrix[,-c(1:5)]
-xmatrix= cbind(x22matrix,x1matrix)
-xmatrix= data.matrix(xmatrix)
-#Y matrix
-y_muacount_t = as.matrix((MUA_data1$MUA_count_T))
-
-
-#Finding lambda
-cv.out= cv.glmnet(xmatrix, y_muacount_t, alpha=1, nfolds=600)
-bestlam = cv.out$lambda.min
-grid <- 10^ seq (10, -2, length = 100)
-
-lasso.mod = glmnet(xmatrix, y_muacount_t, alpha=1, lambda=bestlam)
-lasso.mod$beta
 
 
 #Model with MUA count
