@@ -1,4 +1,4 @@
-############## (Jason's code)
+############## (started with Jason's code)
 #Model building
 
 library(readxl)
@@ -28,6 +28,9 @@ MUA_data1 = MUA_data1[1:665,]
 MUA_data1$C_MUA<- as.factor(MUA_data1$C_MUA)
 MUA_data1$MUA<- as.factor(MUA_data1$MUA)
 
+
+
+
 ###################################################################################
 ### Q1) MUA is a risk factor of C_MUA? 
 ###################################################################################
@@ -48,7 +51,7 @@ cor(MUA_data1$C_MUA_bi,MUA_data1$MUA_bi)
 ###################################################################################
 ### + Q2) the # between 2 TKAs 
 ###################################################################################
-#Model with  MUA predictiing C_mua with time
+#Model with  MUA predicting C_mua with time
 
 cor(MUA_data1[MUA_data1$date_diff<645, ]$C_MUA_bi,MUA_data1[MUA_data1$date_diff<645, ]$date_diff)
 cor(MUA_data1$C_MUA_bi,MUA_data1$date_diff)
@@ -66,15 +69,16 @@ mua_glm1 = glm(C_MUA ~ MUA+date_diff+ MUA*date_diff, data= MUA_data1[MUA_data1$d
 summary(mua_glm1)
 # getting obvious that date_diff is insignificant 
 
-# If the patient got Bilateral TKA, is the risk of getting MUA significantly higher?
+# If the patient got Bilateral TKA, is the risk of getting MUA significantly higher? No. 
 MUA_data1$BTKA <- ifelse(MUA_data1$date_diff==0, "Yes","No")   
 mua_glm1 = glm(as.factor(Group2) ~ as.factor(BTKA), data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
+
 # 1yr/2yr/more than 2yr 
 MUA_data1$yeardiff <- ifelse(MUA_data1$date_diff<366, "1yr",
                              ifelse(MUA_data1$date_diff<365*2,"2yr","more than 2yrs"))  
-MUA_data1$yeardiff<- ordered(as.factor(MUA_data1$yeardiff), levels = c("1yr", "2yr", "more than 2yrs"))
+#MUA_data1$yeardiff<- ordered(as.factor(MUA_data1$yeardiff), levels = c("1yr", "2yr", "more than 2yrs"))
 mua_glm1 = glm(C_MUA ~ yeardiff, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
@@ -82,11 +86,12 @@ summary(mua_glm1)
 # decision tree 
 MUA_tree <- tree(C_MUA ~ MUA +date_diff,data= MUA_data1)
 summary(MUA_tree)  # too many nodes and there is no way to prune. 
-plot(MUA_tree)
 
 MUA_tree1 <- tree(C_MUA ~ MUA +date_diff,data= MUA_data1[MUA_data1$date_diff<645, ])
 summary(MUA_tree1)
 
+MUA_tree2 <- tree(C_MUA ~ MUA +BTKA,data= MUA_data1)
+summary(MUA_tree2)  # BTKA is not used in the decision tree. 
 
 
 
@@ -94,37 +99,146 @@ summary(MUA_tree1)
 #### Q3 sex, age, ....
 #############################################################
 
-# add sex variable 
-mua_glm1 = glm(C_MUA ~ MUA +as.factor(sex), data= MUA_data1, family = "binomial")
+##### add sex variable  - insignificant #######
+mua_glm1 = glm(C_MUA ~ sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~ sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 <- glm(as.factor(Group2) ~ sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA +sex, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
 
-# add age variable
+############################# age variable
+## reference : Is it advisable to drop certain levels of a categorical variable?
+## https://stats.stackexchange.com/questions/141063/is-it-advisable-to-drop-certain-levels-of-a-categorical-variable
 
 mua_glm1 = glm(C_MUA ~ MUA +age_C_TKA, data= MUA_data1, family = "binomial")
-summary(mua_glm1)
+summary(mua_glm1)  #exp(-0.04859) = 0.9525716 : as age increase 1, the odds of getting C_MUA decrease 5%..? Not true
+# numeric age variable seems insignificant and not to make sense. EDA shows that when the patients are in 50s, 60s, the odds of getting MUA seems higher 
 
-MUA_data1$Fac_age_C_TKA <- ifelse((MUA_data1$age_C_TKA<50|MUA_data1$age_C_TKA>70),"less50 or over 70s","50s,60s")
+#MUA_data1$Fac_age_C_TKA <- ifelse((MUA_data1$age_C_TKA<50|MUA_data1$age_C_TKA>70),"less50 or over 70s","50s,60s")
 
 MUA_data1$Fac_age_C_TKA <- ifelse(MUA_data1$age_C_TKA<50,"less50",
                                    ifelse(MUA_data1$age_C_TKA<60, "50s",
                                      ifelse(MUA_data1$age_C_TKA<70, "60s","over70s")))
-
-
-
+MUA_data1$Fac_age_TKA <- ifelse(MUA_data1$age<50,"less50",
+                                   ifelse(MUA_data1$age<60, "50s",
+                                       ifelse(MUA_data1$age<70, "60s","over70s")))
 
 mua_glm1 = glm(C_MUA ~ Fac_age_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
+mua_glm1 = glm(MUA ~ Fac_age_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
 mua_glm1 = glm(C_MUA ~ MUA +Fac_age_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 mua_glm1 = glm(C_MUA ~ (MUA +Fac_age_C_TKA)^2, data= MUA_data1, family = "binomial")
-summary(mua_glm1)
+summary(mua_glm1) # interaction term is insignificant 
+
+MUA_data1 %>% group_by(Fac_age_C_TKA) %>%  count(Group2)
 
 # when the patients are in 50s or 60s, age is significant. interaction is insignificant 
+# keep age in the model. 
+
+#############################  race variable
+# the stand.error is way tooooooooo big..
+# race black is significant..? 
+
+MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian","Asian"), "Other",MUA_data1$race)
+
+mua_glm1 <- glm(C_MUA ~ as.factor(redu_race), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA+ as.factor(redu_race)+Fac_age_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
 
 
 
+#####3######################  ethnicity variable
+MUA_data1$ethnicity <- ifelse(MUA_data1$ethnicity %in% c("Prefers not to answer"), "Non-Hispanic Origin",MUA_data1$ethnicity)
 
+
+mua_glm1 = glm(C_MUA ~  ethnicity, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  ethnicity, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+# the stand.error is tooooooooo big..
+
+
+############################ Insurance
+
+names(MUA_data1)[13] <- c("Insurance")
+MUA_data1$Insurance <- 
+  ifelse(MUA_data1$Insurance %in% c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp","Worker's Comp LUHS"), "Private",
+    ifelse(MUA_data1$Insurance %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
+      ifelse(MUA_data1$Insurance %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
+
+names(MUA_data1)[77] <- c("Insurance_C_TKA")
+MUA_data1$Insurance_C_TKA <- 
+  ifelse(MUA_data1$Insurance_C_TKA %in% c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp","Worker's Comp LUHS"), "Private",
+    ifelse(MUA_data1$Insurance_C_TKA %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
+      ifelse(MUA_data1$Insurance_C_TKA %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
+
+mua_glm1 = glm(C_MUA ~  Insurance_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  Insurance, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(as.factor(Group2) ~  Insurance, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+MUA_data1 %>% group_by(Insurance) %>% count(Group2)
+
+# decision tree 
+MUA_tree <- tree(C_MUA ~ MUA +redu_race+Insurance_C_TKA+Fac_age_C_TKA,data= MUA_data1)
+summary(MUA_tree) # MUA is the only variable used ..
+
+
+############################ BMI
+### from EDA.. BMI is so insignificant. 
+
+mua_glm1 = glm(C_MUA ~  bmi_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  BMI, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(as.factor(Group2) ~  BMI, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+############################ tobacco 
+### from EDA.. tobacco is insignificant. 
+MUA_data1$tobacco_C_TKA<- ifelse(is.na(MUA_data1$tobacco_C_TKA)==TRUE, MUA_data1$tobacco,MUA_data1$tobacco_C_TKA) 
+MUA_data1$redu_tobacco <- ifelse(MUA_data1$tobacco %in% c("Passive","Yes"), "Yes","No")
+MUA_data1$redu_tobacco_C_TKA <- ifelse(MUA_data1$tobacco_C_TKA %in% c("Passive","Yes"), "Yes","No")
+
+mua_glm1 = glm(C_MUA ~  redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  redu_tobacco, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+############################ ASA
+
+MUA_data1$redu_ASA_C_TKA <- ifelse(MUA_data1$ASA_C_TKA %in% c(2,3),"2/3","else")
+MUA_data1$redu_ASA <- ifelse(MUA_data1$ASA %in% c(2,3),"2/3","else")
+
+# missing value 
+MUA_data1$ASA<- ifelse(is.na(MUA_data1$ASA)==TRUE, MUA_data1$ASA_C_TKA,MUA_data1$ASA) 
+
+mua_glm1 = glm(C_MUA ~  as.factor(ASA_C_TKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(C_MUA ~  as.factor(redu_ASA_C_TKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(MUA ~  as.factor(ASA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  as.factor(redu_ASA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+############################ comorbidity
 ### List dont use
 blood_transfusion+
   platelet_transfusion+
@@ -153,13 +267,20 @@ race
 los+
   library(pscl)
 #######
+############################ los
+
+mua_glm1 = glm(C_MUA ~  los_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(MUA ~  los, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
 
 
 ### Total MUA count is response
 
 #Zero inflated model
 mua_t_glm = zeroinfl(MUA_count_T ~ sex + age+
-    
     
     #tobacco+
     op_time_total+

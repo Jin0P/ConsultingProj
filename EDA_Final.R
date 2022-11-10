@@ -30,10 +30,13 @@ EDA$Insurance_C_TKA <-
     ifelse(EDA$Insurance_C_TKA %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
       ifelse(EDA$Insurance_C_TKA %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
 
-
+# date_diff 
 EDA$date_diff =as.Date(EDA$`Date of contralateral TKA`) - as.Date(EDA$surgery_date)
 EDA %>% select(surgery_date,`Date of contralateral TKA`,date_diff)
 EDA$date_diff <- ifelse(EDA$date_diff <0, -EDA$date_diff,EDA$date_diff)
+
+#race
+EDA$redu_race <- ifelse(EDA$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian"), "Ohter",EDA$race)
 
 
 
@@ -63,7 +66,10 @@ ggplot(aes(x = Group2, y = pct, fill = Group2, label = scales::percent(pct))) +
   labs(x = NULL, y=NULL)+
   theme(legend.position="none")
 
-### age
+
+
+
+######################### age
 
 ggplot(data = EDA, aes(x = age_C_TKA, y = C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
@@ -98,12 +104,8 @@ EDA %>% filter(age_C_TKA <50 | age_C_TKA >70) %>%  count(C_MUA) %>%  # No:241/Ye
 
 
 
-### race (I need idea how to organize it better)
+######################### race
 EDA$redu_race <- ifelse(EDA$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian"), "Ohter",EDA$race)
-
-ggplot(data = EDA) +
-  geom_bar(mapping = aes(fill = race, x=MUA_type),position = position_dodge(preserve = "single"))+
-  labs(x = NULL, title = "Race")
 
 ggplot(data = EDA) +
   geom_bar(mapping = aes(fill = redu_race, x=MUA_type),position = position_dodge(preserve = "single"))+
@@ -123,14 +125,27 @@ EDA %>% group_by(redu_race) %>%  count(C_MUA) %>%
   theme(legend.position="none")
 
 
+# proportion of MUA by race 
+EDA %>% group_by(redu_race) %>%  count(MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = MUA, y = pct, fill = MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~redu_race) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
 
 
-### ethnicity (prefers not to answer..?)
+######################### ethnicity 
+EDA$ethnicity <- ifelse(EDA$ethnicity %in% c("Prefers not to answer"), "Non-Hispanic Origin",EDA$ethnicity)
+
 ggplot(data = EDA) +
   geom_bar(mapping = aes(x = Group2, fill=ethnicity),position = position_dodge(preserve = "single"))+
   labs(x = NULL, title = "Ethnicity" ) 
 
-# proportion of MUA in each gender
+# proportion of any MUA in each ethnicity
 EDA %>% group_by(ethnicity) %>%  count(Group2) %>% 
   mutate(pct = prop.table(n)) %>% 
   ggplot(aes(x = Group2, y = pct, fill = Group2, label = scales::percent(pct))) +
@@ -141,6 +156,35 @@ EDA %>% group_by(ethnicity) %>%  count(Group2) %>%
     size = 3)+ 
   labs(x = NULL, y=NULL)+
   theme(legend.position="none")
+
+# proportion of C_MUA in each ethnicity
+EDA %>% group_by(ethnicity) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ethnicity) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+
+# proportion of MUA in each ethnicity
+EDA %>% group_by(ethnicity) %>%  count(MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = MUA, y = pct, fill = MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ethnicity) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+
+## two results(plots) of MUA vs ethnicity and  C_MUA vs ethnicity seems so different.. 
+
+
+
 
 ### Insurance
 # financial_class (insurance type) 
@@ -268,9 +312,9 @@ ggcorrplot(cor(comorb_2), title = "Correlation matrix of comorbities of patients
 
 
 ##################################################################################
-#### about procedure EDA
+#### about procedure EDA : los, operation time, # days between 2 TKAs
 
-### Stay Days
+### Stay Days ###
 
 EDA$C_MUA<- as.factor(ifelse(EDA$C_MUA==1,"Yes","No"))
 EDA$MUA<- as.factor(ifelse(EDA$MUA==1,"Yes","No"))
@@ -289,7 +333,7 @@ ggplot(data = EDA, aes(x = los_C_TKA, y=C_MUA)) +
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
 
 
-### operation hours
+################################  operation hours ###
 
 # 1st TKA some missing value 
 ggplot(data = EDA, aes(x = op_time, y=MUA)) +
@@ -306,7 +350,7 @@ ggplot(data = EDA, aes(x = op_time_C_TKA, y=C_MUA)) +
   labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
 
 
-### The # of dates between TKAs
+################################ The # of dates between TKAs ###
 ggplot(data = EDA, aes(x = date_diff, y=C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
   #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
@@ -334,10 +378,10 @@ EDA %>% filter(date_diff < 365) %>%  count(C_MUA) %>%
   theme(legend.position="none")
 
 
-# proportion of getting C_MAU when the patients got bilateral TKA
-EDA %>% filter(date_diff == 0) %>%  count(C_MUA, MUA) %>% 
+# proportion of getting C_MAU when the patients got bilateral TKA depending on MUA 
+EDA %>% filter(date_diff == 0) %>%  group_by(MUA) %>% count(C_MUA) %>% 
   mutate(pct = prop.table(n)) %>% 
-  ggplot(aes(x = C_MUA, y = pct, fill = MUA, label = scales::percent(pct))) +
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
   geom_col( position = "dodge")+
   facet_wrap(~ MUA) +
   geom_text(position = position_dodge(width = .9),    # move to center of bars
@@ -345,3 +389,28 @@ EDA %>% filter(date_diff == 0) %>%  count(C_MUA, MUA) %>%
     size = 5)+ 
   labs(x = "Contraletral MUA", y=NULL)+
   theme(legend.position="none")
+
+# proportion of getting C_MAU when the patients got bilateral TKA (97%:3%)
+EDA %>% filter(date_diff == 0)  %>% count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA", y=NULL)+
+  theme(legend.position="none")
+
+# proportion of getting MAU when the patients got bilateral TKA (98%:2%)
+EDA %>% filter(date_diff == 0)  %>% count(MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = MUA, y = pct, fill = MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "MUA", y=NULL)+
+  theme(legend.position="none")
+
