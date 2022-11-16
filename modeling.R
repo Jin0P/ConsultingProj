@@ -40,6 +40,7 @@ MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Ot
 ### Q1) MUA is a risk factor of C_MUA?  - Yes
 ###################################################################################
 
+
 #Model with  MUA predicting C_mua
 mua_glm = glm(C_MUA_bi ~ MUA_bi, data= MUA_data1, family = "binomial")
 summary(mua_glm)
@@ -78,6 +79,18 @@ summary(mua_glm1)
 MUA_data1$BTKA <- ifelse(MUA_data1$date_diff==0, "Yes","No")   
 mua_glm1 = glm(as.factor(Group2) ~ as.factor(BTKA), data= MUA_data1, family = "binomial")
 summary(mua_glm1)
+
+
+# If the patient got 2TKAs in different days, is the risk of getting MUA significantly higher? No. 
+  mua_glm1 = glm(as.factor(Group2) ~ date_diff, data= MUA_data1[MUA_data1$BTKA=="No",], family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ date_diff, data= MUA_data1[MUA_data1$BTKA=="No",], family = "binomial")
+summary(mua_glm1)
+
+
+
+
 
 
 # 1yr/2yr/more than 2yr 
@@ -345,6 +358,122 @@ summary(mua_glm)
 
 
 
+###################
+
+
+library(MASS)
+# Fit the full model 
+full.model <- glm(C_MUA_bi ~ MUA_bi+
+                          sex+
+                          Fac_age_C_TKA+
+                          date_diff+
+                          redu_race+
+                          ethnicity+
+                          Insurance_C_TKA+
+                          bmi_C_TKA+
+                          redu_ASA_C_TKA+
+                          blood_transfusion_C_TKA+
+                          Hemiplegia_C_TKA+
+                          op_time_C_TKA+
+                          los_C_TKA+
+                          readmit_90d_C_TKA+
+                          ed_90d_C_TKA, 
+                          data = MUA_data1)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = "both", trace = FALSE)
+summary(step.model)
+
+  step.modelB <- stepAIC(full.model, direction = "backward", trace = FALSE)
+  summary(step.modelB)
+  
+  
+#################################
+  # reference : https://www.r-bloggers.com/2019/04/methods-for-dealing-with-imbalanced-data/
+  # https://towardsdatascience.com/interpretation-of-kappa-values-2acd1ca7b18f
+  set.seed(1234)
+  index<-sample(1:length(MUA_data1$C_MUA),round(0.8*length(MUA_data1$C_MUA),0),replace=FALSE)
+  train<-MUA_data1[index,]
+  test<-MUA_data1[-index,]
+  
+  # up-sampling 
+  library(caret)
+  
+  set.seed(111)
+  trainup<-upSample(x=train[,-ncol(train)],
+    y=train$C_MUA)
+  table(trainup$C_MUA)
+  
+  full.model_train <- glm(C_MUA_bi ~ MUA_bi+
+      sex+
+      Fac_age_C_TKA+
+      date_diff+
+      redu_race+
+      ethnicity+
+      Insurance_C_TKA+
+      bmi_C_TKA+
+      redu_ASA_C_TKA+
+      blood_transfusion_C_TKA+
+      Hemiplegia_C_TKA+
+      op_time_C_TKA+
+      los_C_TKA+
+      readmit_90d_C_TKA+
+      ed_90d_C_TKA, 
+    data = trainup, family = "binomial")
+  summary(full.model_train)
+  
+  finalmodel_trainup <- glm(C_MUA_bi ~ MUA_bi+
+      #sex+
+      Fac_age_C_TKA+
+      date_diff+
+      redu_race+
+      #ethnicity+
+      #Insurance_C_TKA+
+      #bmi_C_TKA+
+      redu_ASA_C_TKA+
+      blood_transfusion_C_TKA+
+      #Hemiplegia_C_TKA+
+      op_time_C_TKA+
+      los_C_TKA+
+      readmit_90d_C_TKA+
+      ed_90d_C_TKA-1, 
+    data = trainup, family = "binomial")
+  summary(finalmodel_trainup)
+  
+  pred_up <- predict(finalmodel_trainup,test, type="response")
+  pred_up <- as.integer(pred_up>0.5)
+  confusionMatrix(as.factor(pred_up),as.factor(test$C_MUA_bi))
+  # kappa is about 0.2 slight 
+  # increased specificity (compare "pred")
+  
+  
+  ######## boosting <- something wrong... 
+  library(gbm)
+  set.seed(1)
+ boosting_CMUA <- gbm(C_MUA_bi ~ MUA_bi+
+     as.factor(sex)+
+     as.factor(Fac_age_C_TKA)+
+     date_diff+
+     as.factor(redu_race)+
+     as.factor(ethnicity)+
+     as.factor(Insurance_C_TKA)+
+     bmi_C_TKA+
+     as.factor(redu_ASA_C_TKA)+
+     blood_transfusion_C_TKA+
+     Hemiplegia_C_TKA+
+     op_time_C_TKA+
+     los_C_TKA+
+     readmit_90d_C_TKA+
+     ed_90d_C_TKA, 
+   data = trainup, distribution = 'bernoulli' ,n.trees = 1000)  
+ 
+ summary(boosting_CMUA)
+ # op_time_C_TKA,   blood_transfusion_C_TKA,MUA_bi   is the most important variables
+ 
+ pred_up_boosting <- predict(boosting_CMUA,test, type="response")
+ pred_up_boosting <- as.integer(pred_up_boosting>0.5)
+ confusionMatrix(as.factor(pred_up_boosting),as.factor(test$C_MUA_bi))
+ 
 
 
 

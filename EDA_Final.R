@@ -5,6 +5,7 @@ library(dplyr)
 library(gtsummary)
 library(ggcorrplot)
 
+
 ####################################################################### 
 # Data Setup
 #######################################################################
@@ -16,6 +17,9 @@ EDA$ASA<- as.factor(EDA$ASA)
 EDA$ASA_C_TKA<- as.factor(EDA$ASA_C_TKA)
 EDA$MUA<- as.factor(EDA$MUA)
 EDA$C_MUA<- as.factor(EDA$C_MUA)
+
+EDA$Group2<-ifelse(EDA$Group2=="MUA",paste0("Yes_",EDA$Group2),paste(EDA$Group2))
+
 
 names(EDA)[13] <- c("Insurance")
 EDA$Insurance <- 
@@ -70,12 +74,16 @@ ggplot(aes(x = Group2, y = pct, fill = Group2, label = scales::percent(pct))) +
 
 ######################### age
 
+ggplot(data = EDA, aes(x = age_C_TKA, fill=C_MUA)) +
+  geom_histogram(binwidth = 4,color="#e9ecef")+
+  scale_fill_manual(values=c("#69b3a2", "#404080")) +
+  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+
 ggplot(data = EDA, aes(x = age_C_TKA, y = C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
  # geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
   coord_flip()+
   labs(y = NULL, fill=NULL)+ theme(legend.position="none")
-
 
 # proportion of C_MUA when the patients are in 50s or 60s 8/391 : 0.02046036
 EDA %>% filter(age_C_TKA >50 & age_C_TKA <70) %>%  count(C_MUA) %>% # No:391/Yes: 8
@@ -370,6 +378,23 @@ ggplot(data = EDA, aes(x = date_diff, y=C_MUA)) +
   #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
   coord_flip()
   #labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
+
+
+ggplot(data = EDA, aes(x = date_diff, y=Group2)) +
+  geom_boxplot(aes(fill=Group2))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()
+#labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
+
+ggplot(data = EDA, aes(x = date_diff, y=MUA)) +
+  geom_boxplot(aes(fill=MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()
+#labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
+
+
+
+
 
 EDA %>%  group_by(C_MUA) %>% summarise(mean(date_diff), median(date_diff))
 
