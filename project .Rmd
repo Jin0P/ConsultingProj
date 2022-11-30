@@ -1034,7 +1034,7 @@ bestlam = cv.out$lambda.min
 bestlam[i]
 
 lasso.mod[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
-pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test)
+pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,,type="response")
 predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
 spec[i] <- sum(predict_C_MUA*y_test)/ sum(y_test)
 }
@@ -1051,6 +1051,7 @@ MUA_data4 <- MUA_data3
 MUA_names<- names(MUA_data4)
 colnames(MUA_data4) <- paste0('x',1:46)
 
+spec.over <- c()
 for(i in 1:5){
 MUA_over_train <- ovun.sample(x2 ~ ., data = MUA_data4[folds !=1,], method = "both",N = sum(MUA_data3[folds !=1,2]==0)*2, p = 0.5,seed=1)$data
 y_train = MUA_over_train$x2
@@ -1065,14 +1066,62 @@ plot(cv.out)
 bestlam = cv.out$lambda.min
 
 lasso.mod[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
-pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test)
+pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,,type="response")
 predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
-spec[i] <- sum(predict_C_MUA*y_test)/sum(y_test)
+spec.over[i] <- sum(predict_C_MUA*y_test)/sum(y_test)
 }
 
+sum(predict_C_MUA); sum(y_test)
 predict(lasso.mod[[1]],s=bestlam[1],type="coefficients")
 predict(lasso.mod[[5]],s=bestlam[5],type="coefficients")
 
 ```
 
+###### d. Stratified k-fold Cross-Validation
+```{r}
+# reference : https://statisticsglobe.com/stratified-k-fold-cross-validation-r
+
+library(data.table)
+library("rpart")  
+
+k_folds <- 5   
+y=MUA_data3[,2]
+X=MUA_data3[,-2]
+data_ex <- data.table(y,X, fold = 0)  
+
+for (y_i in 0:1 ) {                                          # Create stratified folds
+  nrow_i       <- nrow(data_ex[y == y_i,])
+  n_per_fold_i <- ceiling(nrow_i / k_folds)
+  data_ex[y == y_i, fold := sample(rep(1:k_folds, n_per_fold_i), nrow_i, replace = FALSE)]
+}
+data_ex[, table(y, fold)]
+
+
+# LASSO
+lasso.mod.st <- list()
+spec.st <- c()
+bestlam <- c()
+
+for(i in 1:5){
+y_train = as.vector(data_ex[fold!=i,1]$y)
+x_train = as.matrix(data_ex[fold!=i,-c(1,47)])
+
+
+y_test = as.vector(data_ex[fold==i,1]$y)
+x_test = as.matrix(data_ex[fold==i,-c(1,47)])
+
+set.seed(1234)
+cv.out = cv.glmnet(x_train, y_train, alpha =1,family="binomial")
+plot(cv.out)
+bestlam = cv.out$lambda.min
+bestlam[i]
+
+lasso.mod.st[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
+pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,type="response")
+predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
+spec.st[i] <- sum(predict_C_MUA*y_test)/ sum(y_test)
+}
+
+sum(predict_C_MUA);  sum(y_test)
+```
 
