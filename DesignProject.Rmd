@@ -17,22 +17,16 @@ The effects model of BIBD for $2^4$ factorial design is;
 > $y_{ijkl} = µ + A_i + B_j + C_k + D_l + AB_{ij} + AC_{ik} + AD_{il} + BC_{jk} +BD_{jl}+CD_{kl} +ABC_{ijk}+ ABD_{ijl}+ACD_{ikl}+BCD_{jkl}+ Block + ε_{ijkl}$
 
 where
-
 Y(response): The height difference between the first day and 12th day
-
-A(factor1) : flower food,
-
-B(factor2) : filtered water,
-
-C(factor3) : Cutting angle,
-
+A(factor1) : flower food
+B(factor2) : filtered water
+C(factor3) : Cutting angle
 D(factor4) : Storing in the refrigerator at night
-
 i,j,l,k (levels)= 1,2
 
 The effects model of BIBD for $2^4$ factorial design is similar to the $2^4$ factorial design. The only difference is that ABCD is confounded with block.
 
-##### b. Factor Effects 
+##### b. Factor Effects
 
 The number of total observations is the same with the total number of effects, so we have no degree of freedom for the residuals term. Without the degree of freedom in the residuals term, we cannot fine MSE because the denominator is zero, then we cannot find the F-statistics and the p-value to determine which effects is significant or need to be dropped out. Instead, we can find the absolute value of factor effects to determine which effect should be in the model. (table #) shows the factor effects and the half normal plot displays it. ABCD has the largest effect but it is confounded with block. The interaction term ABD and its nested terms AB, AD and BD appear to have large effect. The absolute value of factor effect of ABC is the same with the absolute value of factor effect of BD, which is 1.5. Also the absolute value of factor effect of CD is 1.35. So the effect of ABD, ABC and CD are included in the initial model. 
 
@@ -49,7 +43,7 @@ The table # is the result of ANOVA of the final reduced model. The interaction t
 
 Let’s look into the interaction term of ABD and AB. The plot # is the interaction plot of ABD. When D = 1, the slope of red line and the dashed blue line are not paralleled but quite similar. The sign of the slope are all negative and the two lines are located close to each other. But D = -1, for the roses that we didn’t store in the refrigerator at night, the two slope showed the opposite direction. We want the smallest y, assuming that mean the healthiest rose. In the interaction plot ABD, we can find that y has the smallest value when D = -1, B= -1 but only A = 1. This means that when not storing the roses in the refrigerator at night and putting tap water but putting the recommended amount of flower food, we can the roses stay healthy longer.  and the interaction plot of AB also shows that when B=-1 and A=1, we got the best result.  
 
-The interaction plot of AB shows the relationship between flower food and water on the longevity of the roses. The two lines are not paralleled so the interaction effect is confirmed. In the interaction plot AB, we can find that y has the smallest value when B = -1 and A = 1. This means that when putting the recommended amount of flower food in tap water, the roses stay healthy longer. Interesting finding is when B=1 and A=1, so when putting the roses in filtered water adding the recommended amount of flower food, we got the worst result. 
+The interaction plot of AB shows the relationship between flower food and water on the longevity of the roses. The two lines are not paralleled so the interaction effect is confirmed. In the interaction plot AB, we can find that y has the smallest value when B = -1 and A = 1. This means that when putting the recommended amount of flower food in tap water, the roses stay healthy longer. Interesting finding is when B=1 and A=1, so when putting the roses in filtered water adding the recommended amount of flower food, it is likely to get the worst result. 
 
 ##### e. Regression model 
 
@@ -63,7 +57,7 @@ ANOVA assumes that the residuals should be normally distributed with mean 0. Als
   To test the assumption of normal distribution, Shapiro-Wilk's W test and Q-Q plot are used. In Q-Q plot(plot #), the plotted residuals are not departed from the straight line, which means it is normally distributed. Shapiro-Wilk's test result is consistent with the finding in the QQ plot. The p-value of Shapiro test shows insignificant (p-value >0.05) so we can confirm that the assumption of normality meet.
   
 ###### (ii) Homogeneity of variance check 
- To test the assumption of homogeneity of variance, Levene's test and the scatter of residuals versus fitted value are used. The scatter of residuals versus fitted value is used to detect unequal error variances. The scatter plot (plot #) shows that a megaphone pattern so it seems to be violated the assumption. The significance (p-value < 0.05) of the Levene's test confirmed the violation of the homogeneity of variance assumption. 
+ To test the assumption of homogeneity of variance, Levene's test and the scatter plot of residuals versus fitted value are used. The scatter plot of residuals versus fitted value is used to detect unequal error variances. The scatter plot (plot #) shows that a megaphone pattern so the assumption seems to be violated. The significance (p-value < 0.05) of the Levene's test confirmed the violation of the homogeneity of variance assumption. 
  
  ANOVA is robust to violations to the assumption of homogeneity of variance. So we basically can trust the findings. But also,the possibility that the conclusion of the analysis is invalid still remains. We can consider nonparametric alternative ANOVA test which do not assume equality of variance, such as Kruskal Wallis test. 
 
@@ -72,34 +66,40 @@ ANOVA assumes that the residuals should be normally distributed with mean 0. Als
 #### II. Random Complete Block Design
 ##### a.EDA: Boxplot 
 
-The collected data has one factor with four levels with no replicate in two blocks so the total observation number is eight. The box-plot of block (plot# : left) shows that the data of block I is more widely spread than the data of block II. The box-plot of treatments (plot# : right) shows that the level 1 (45' angle cut) has the lowest y value while the level 4 (no cut) has the highest y value. For the level 2(75' angle cut) and the level 3(flat cut), it doesn't appear noticeable difference.   
+The collected data has one factor with four levels with no replicate in two blocks so the total observation number is eight. The box-plot of block (plot# : left) shows that the data of block I is more widely spread than the data of block II. The box-plot of treatments (plot# : right) shows that the level 1 (45' angle cut) has the lowest y value while the level 4 (no cut) has the highest y value. For the level 2(75' angle cut) and the level 3(flat cut), it doesn't appear any noticeable difference.   
 
 ##### b.ANOVA
-###### (i) Effects model of RBCD
+###### (i) Effects model of RCBD and Assumption
 The effects model of RBCD is 
 > $y_{ij} = µ + \tau_i + \beta_j + ε_{ij}$
 where y : the height difference between the first day and 12th day
     $\mu$ : overall mean 
-    $\tau_i$ : 
-    $\beta_j$ :  
+    $\tau_i$ : effect of ith treatment
+    $\beta_j$ :  effect of jth blocks
     i : the number of level 1,2,3,4
     j : the number of block 1,2 
+
+The assumption of RBCD is     
+>  $ε_{ij} ~ N(0,\sigma^2)$
+
+In RCBD, the residuals are assumed to be normally distributed with mean 0 and common variance $\sigma^2$.
     
-###### (ii) Assumption and hypothese 
-=> write the assumption 
+###### (ii) Analysis
 
-=> the hypothese 
+The null hypothesis is all effect of treatments are the same so it can be written as $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4$. The alternative hypothesis is at least one of the effect of treatment is different. 
 
-
-The table # shows the ANOVA result of RCBD. Since the p-value of the treatments is larger than 0.05 so we failed to reject the null hypothesis. We can conclude that there is no significant difference between cutting angle level. These conclusion is consistent with the finding of the factorial design. In factorial design analysis, C is for the cutting angle and it is not included in the final reduced model. 
+The table # shows the ANOVA result of RCBD. Since the p-value of the treatments is larger than 0.05 so we failed to reject the null hypothesis. We can conclude that there is no significant difference between cutting angle levels. This conclusion is consistent with the finding of the factorial design. In factorial design analysis, C stands for the cutting angle and it is not included in the final reduced model because it is insignificant. 
 
 ##### c. Assumption check 
 ###### (i) Normality assumption check
+  To test the assumption of normal distribution, Shapiro-Wilk's W test and Q-Q plot are used. In Q-Q plot(plot #), the plotted residuals are not departed from the straight line, which means it is normally distributed. Shapiro-Wilk's test result is consistent with the finding in the QQ plot. The p-value of Shapiro test shows insignificant (p-value >0.05) so we can confirm that the assumption of normality meet.
+
 ###### (ii) Homogeneity of variance check 
+  To test the assumption of homogeneity of variance, Barlett's test and the scatter plot of residuals versus fitted value are used. The scatter plot (plot #) does not appear any pattern so the assumption of homogeneity of variance seems to be valid. The insignificance (p-value > 0.05) of the Barlett's test confirmed that the assumption of homogeneity of variance meets. 
 
-
-
-
+##### d. Tukey comparisons
+Since the insignificance of the cutting angle is confirmed, the Tukey comparison is not required as the ad hoc testing. However, since the box-plot shows some noticeable difference between cutting angle 45 (level1) and no cut (level4), we decided to check the Tukey comparisons. 
+When level 4 is compared with other levels, the differences between two levels seems to be larger than the differences between other levels, but all of the confidence levels cover zero, so it shows there is no significant difference at the 5% level. Also, even at the 10% level, Tukey comparison shows that most of confidence levels cover zero except the comparison between level 1 and level 4. So, we could confirm that the insignificance of the cutting angle levels.  
 
 ---
 ### R code
@@ -155,9 +155,6 @@ interaction.plot(B,A,y)
 qqnorm(g_final$residuals)
 qqline(g_final$residuals)
 shapiro.test(g_final$residuals) 
-
-plot(g_final$residuals)
-plot(g_final$residuals, g_final$fitted.values)
 
 # Homoscadasity test 
 
