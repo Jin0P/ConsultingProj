@@ -1,0 +1,215 @@
+---
+title: "Design Project"
+author: "Jinyoung Park"
+#header-includes: \usepackage{setspace}\doublespacing
+output: 
+   html_document
+---
+
+#### I. Balanced Incomplete Design for $2^4$ factorial design
+
+We randomly divided the 16 roses into two blocks equally to make it balanced, and each block has 8 observations for $2^4$ factorial analysis so it is incomplete design.
+
+##### a. The effects model
+
+The effects model of BIBD for $2^4$ factorial design is;
+
+> $y_{ijkl} = µ + A_i + B_j + C_k + D_l + AB_{ij} + AC_{ik} + AD_{il} + BC_{jk} +BD_{jl}+CD_{kl} +ABC_{ijk}+ ABD_{ijl}+ACD_{ikl}+BCD_{jkl}+ Block + ε_{ijkl}$
+
+where
+
+Y(response): The height difference between the first day and 12th day
+
+A(factor1) : flower food,
+
+B(factor2) : filtered water,
+
+C(factor3) : Cutting angle,
+
+D(factor4) : Storing in the refrigerator at night
+
+i,j,l,k (levels)= 1,2
+
+The effects model of BIBD for $2^4$ factorial design is similar to the $2^4$ factorial design. The only difference is that ABCD is confounded with block.
+
+##### b. Factor Effects 
+
+The number of total observations is the same with the total number of effects, so we have no degree of freedom for the residuals term. Without the degree of freedom in the residuals term, we cannot fine MSE because the denominator is zero, then we cannot find the F-statistics and the p-value to determine which effects is significant or need to be dropped out. Instead, we can find the absolute value of factor effects to determine which effect should be in the model. (table #) shows the factor effects and the half normal plot displays it. ABCD has the largest effect but it is confounded with block. The interaction term ABD and its nested terms AB, AD and BD appear to have large effect. The absolute value of factor effect of ABC is the same with the absolute value of factor effect of BD, which is 1.5. Also the absolute value of factor effect of CD is 1.35. So the effect of ABD, ABC and CD are included in the initial model. 
+
+##### c. Model fitting 
+
+The table # is the result of ANOVA of the initial model. Since the threshold of p-value ($\alpha$) to determine the significance is 0.05, ABC is the first effect to be removed from the model. Interestingly, the main effects and some interaction term that had p-value between 0.05 and 0.1, so it was arguable about its significance in the initial model, become insignificant in the second model, whilst AB and ABD could solidify its significance. DC and C also are removed from the model. In the final model, we have AB and ABD and all the nested terms - A,B,D,AD,BD. Note that if the interaction term is significant, all of the nested terms should be included in the model, even if those are insignificant. 
+
+The effects model of final reduced model is 
+> $y_{ijkl} = µ + A_i + B_j + D_l + AB_{ij} + AD_{il} +BD_{jl}+ABD_{ijl}+ Block + ε_{ijkl}$
+
+The table # is the result of ANOVA of the final reduced model. The interaction term ABD and AB are significant while none of main effects are significant. 
+
+##### d. Interaction plots of ABD and AB
+
+Let’s look into the interaction term of ABD and AB. The plot # is the interaction plot of ABD. When D = 1, the slope of red line and the dashed blue line are not paralleled but quite similar. The sign of the slope are all negative and the two lines are located close to each other. But D = -1, for the roses that we didn’t store in the refrigerator at night, the two slope showed the opposite direction. We want the smallest y, assuming that mean the healthiest rose. In the interaction plot ABD, we can find that y has the smallest value when D = -1, B= -1 but only A = 1. This means that when not storing the roses in the refrigerator at night and putting tap water but putting the recommended amount of flower food, we can the roses stay healthy longer.  and the interaction plot of AB also shows that when B=-1 and A=1, we got the best result.  
+
+The interaction plot of AB shows the relationship between flower food and water on the longevity of the roses. The two lines are not paralleled so the interaction effect is confirmed. In the interaction plot AB, we can find that y has the smallest value when B = -1 and A = 1. This means that when putting the recommended amount of flower food in tap water, the roses stay healthy longer. Interesting finding is when B=1 and A=1, so when putting the roses in filtered water adding the recommended amount of flower food, we got the worst result. 
+
+##### e. Regression model 
+
+We checked the linear regression result. Interestingly, the main effects A and B which are insignificant in ANOVA are significant in the regression model. 
+
+
+##### f. Assumption Checks 
+ANOVA assumes that the residuals should be normally distributed with mean 0. Also it assumes homogeneity of variance, which means the variance among the groups should be approximately equal. 
+
+###### (i) Normality assumption check
+  To test the assumption of normal distribution, Shapiro-Wilk's W test and Q-Q plot are used. In Q-Q plot(plot #), the plotted residuals are not departed from the straight line, which means it is normally distributed. Shapiro-Wilk's test result is consistent with the finding in the QQ plot. The p-value of Shapiro test shows insignificant (p-value >0.05) so we can confirm that the assumption of normality meet.
+  
+###### (ii) Homogeneity of variance check 
+ To test the assumption of homogeneity of variance, Levene's test and the scatter of residuals versus fitted value are used. The scatter of residuals versus fitted value is used to detect unequal error variances. The scatter plot (plot #) shows that a megaphone pattern so it seems to be violated the assumption. The significance (p-value < 0.05) of the Levene's test confirmed the violation of the homogeneity of variance assumption. 
+ 
+ ANOVA is robust to violations to the assumption of homogeneity of variance. So we basically can trust the findings. But also,the possibility that the conclusion of the analysis is invalid still remains. We can consider nonparametric alternative ANOVA test which do not assume equality of variance, such as Kruskal Wallis test. 
+
+// reference : https://www.statisticssolutions.com/free-resources/directory-of-statistical-analyses/testing-of-assumptions/
+
+#### II. Random Complete Block Design
+##### a.EDA: Boxplot 
+
+The collected data has one factor with four levels with no replicate in two blocks so the total observation number is eight. The box-plot of block (plot# : left) shows that the data of block I is more widely spread than the data of block II. The box-plot of treatments (plot# : right) shows that the level 1 (45' angle cut) has the lowest y value while the level 4 (no cut) has the highest y value. For the level 2(75' angle cut) and the level 3(flat cut), it doesn't appear noticeable difference.   
+
+##### b.ANOVA
+###### (i) Effects model of RBCD
+The effects model of RBCD is 
+> $y_{ij} = µ + \tau_i + \beta_j + ε_{ij}$
+where y : the height difference between the first day and 12th day
+    $\mu$ : overall mean 
+    $\tau_i$ : 
+    $\beta_j$ :  
+    i : the number of level 1,2,3,4
+    j : the number of block 1,2 
+    
+###### (ii) Assumption and hypothese 
+=> write the assumption 
+
+=> the hypothese 
+
+
+The table # shows the ANOVA result of RCBD. Since the p-value of the treatments is larger than 0.05 so we failed to reject the null hypothesis. We can conclude that there is no significant difference between cutting angle level. These conclusion is consistent with the finding of the factorial design. In factorial design analysis, C is for the cutting angle and it is not included in the final reduced model. 
+
+##### c. Assumption check 
+###### (i) Normality assumption check
+###### (ii) Homogeneity of variance check 
+
+
+
+
+
+---
+### R code
+
+#### I. Balanced Incomplete Block Design for $2^4$ factorial design 
+```{r warning=FALSE}
+A <- rep(c(-1,1), times=8)
+B <- rep(c(-1,1), each = 2, times=4)
+C <- rep(c(-1,1), each = 4, times=2)
+D <- rep(c(-1,1), each = 8)
+# (1),a,b,ab,c,ac,bc,abc,d,ad,bd,abd,cd,acd,bcd,abcd
+y <- c(6.2,0.5,1,8.2,2.5,1.5,2.8,4,1.5,4.6,5.6,1,6.6,0.5,1.5,4.4)
+
+ABCD <- A*B*C*D
+A <- as.factor(A)
+B <- as.factor(B)
+C <- as.factor(C)
+D <- as.factor(D)
+Block <- as.factor(ABCD)
+
+rose.data <- data.frame(A, B, C, D, Block, y)
+
+# absolute diff
+g <- lm(y~(A+B+C+D)^4)
+g$effects
+
+effects <- abs(g$effects[-1])
+qq <- qqnorm(effects, type="n")  # "n" means no plotting
+text(qq$x, qq$y, labels = names(effects))
+
+g1 <- lm(y~(A*B*D)+(A*B*C)+(C*D)+Block)
+anova(g1)
+
+g2 <- lm(y~(A*B*D)+C+Block)
+anova(g2)
+
+g_final <- lm(y~(A*B*D)+Block)
+anova(g_final)
+summary(g_final)
+
+# ABD interaction plot
+
+library(dae)
+interaction.ABC.plot(y, x.factor=A,
+                     groups.factor=B, trace.factor=D,
+                     data=rose.data,
+                     title="ABD interaction plot")
+
+# AB interaction plot
+interaction.plot(B,A,y)
+
+# normality assumption check 
+qqnorm(g_final$residuals)
+qqline(g_final$residuals)
+shapiro.test(g_final$residuals) 
+
+plot(g_final$residuals)
+plot(g_final$residuals, g_final$fitted.values)
+
+# Homoscadasity test 
+
+# the scatter plot of residuals and fitted value
+plot(g_final$fitted.values,g_final$residuals)
+
+# Homoscedasticity One way
+gaov<-aov(y~A*B*D)
+bartlett.test(gaov$residuals~A)
+bartlett.test(gaov$residuals~B)
+bartlett.test(gaov$residuals~D)
+
+library(car)
+leveneTest(y ~ as.factor(A)*as.factor(B)*as.factor(D)) 
+leveneTest(y ~ as.factor(A)*as.factor(B)) 
+```
+
+#### RCBD
+
+```{r}
+I <- c(1,4.5,2.5,10)
+II <- c(1.7,1.9,4.5,7.5)
+y <- c(I,II)
+treatments <- as.factor(rep(1:4, time=2))
+blocks <- as.factor(rep(1:2, each = 4))
+RCBD.data <- data.frame(y,treatments,blocks)
+
+
+ par(mfrow=c(1,2))  # A 1 by 2 panel of plots
+ boxplot(y~blocks, xlab="blocks")
+ boxplot(y~treatments, xlab="treatments")
+ 
+ # Get the ANOVA table of RCBD
+ RCBD <- lm(y~treatments + blocks)
+ anova(RCBD)
+
+ #normality assumption check
+ resid <- RCBD$residuals
+ qqnorm(resid)
+ qqline(resid)
+ shapiro.test(resid)
+ 
+ # equal varance assumption check 
+ bartlett.test(y,treatments)
+ plot(RCBD$residuals,RCBD$fitted.values)
+ 
+ # tukey comparisons
+  tukey_RCBD_95<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.95)
+  tukey_RCBD_95
+  plot(tukey_RCBD_95)
+ 
+  tukey_RCBD_90<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.90)
+  plot(tukey_RCBD_90)
+ 
+```
