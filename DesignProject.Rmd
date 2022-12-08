@@ -1,7 +1,7 @@
 ---
 title: "Design Project"
-author: "Jinyoung Park"
-#header-includes: \usepackage{setspace}\doublespacing
+author: "Jason Proctor, Jinyoung Park"
+header-includes: \usepackage{setspace}\doublespacing
 output: 
    html_document
 ---
@@ -12,17 +12,17 @@ We randomly divided the 16 roses into two blocks equally to make it balanced, an
 
 ##### a. The effects model
 
-The effects model of BIBD for $2^4$ factorial design is;
+The effects model of BIBD for $2^4$ factorial design is;  
 
 > $y_{ijkl} = µ + A_i + B_j + C_k + D_l + AB_{ij} + AC_{ik} + AD_{il} + BC_{jk} +BD_{jl}+CD_{kl} +ABC_{ijk}+ ABD_{ijl}+ACD_{ikl}+BCD_{jkl}+ Block + ε_{ijkl}$
 
-where
-Y(response): The height difference between the first day and 12th day
-A(factor1) : flower food
-B(factor2) : filtered water
-C(factor3) : Cutting angle
-D(factor4) : Storing in the refrigerator at night
-i,j,l,k (levels)= 1,2
+where  
+Y(response): The height difference between the first day and 12th day  
+A(factor1) : flower food  
+B(factor2) : filtered water  
+C(factor3) : Cutting angle  
+D(factor4) : Storing in the refrigerator at night  
+i,j,l,k (levels)= 1,2  
 
 The effects model of BIBD for $2^4$ factorial design is similar to the $2^4$ factorial design. The only difference is that ABCD is confounded with block.
 
@@ -34,7 +34,8 @@ The number of total observations is the same with the total number of effects, s
 
 The table # is the result of ANOVA of the initial model. Since the threshold of p-value ($\alpha$) to determine the significance is 0.05, ABC is the first effect to be removed from the model. Interestingly, the main effects and some interaction term that had p-value between 0.05 and 0.1, so it was arguable about its significance in the initial model, become insignificant in the second model, whilst AB and ABD could solidify its significance. DC and C also are removed from the model. In the final model, we have AB and ABD and all the nested terms - A,B,D,AD,BD. Note that if the interaction term is significant, all of the nested terms should be included in the model, even if those are insignificant. 
 
-The effects model of final reduced model is 
+The effects model of final reduced model is;  
+
 > $y_{ijkl} = µ + A_i + B_j + D_l + AB_{ij} + AD_{il} +BD_{jl}+ABD_{ijl}+ Block + ε_{ijkl}$
 
 The table # is the result of ANOVA of the final reduced model. The interaction term ABD and AB are significant while none of main effects are significant. 
@@ -64,29 +65,32 @@ ANOVA assumes that the residuals should be normally distributed with mean 0. Als
 // reference : https://www.statisticssolutions.com/free-resources/directory-of-statistical-analyses/testing-of-assumptions/
 
 #### II. Random Complete Block Design
-##### a.EDA: Boxplot 
+##### a. Exploratory Analysis 
 
 The collected data has one factor with four levels with no replicate in two blocks so the total observation number is eight. The box-plot of block (plot# : left) shows that the data of block I is more widely spread than the data of block II. The box-plot of treatments (plot# : right) shows that the level 1 (45' angle cut) has the lowest y value while the level 4 (no cut) has the highest y value. For the level 2(75' angle cut) and the level 3(flat cut), it doesn't appear any noticeable difference.   
 
 ##### b.ANOVA
 ###### (i) Effects model of RCBD and Assumption
-The effects model of RBCD is 
+The effects model of RCBD is;
+
 > $y_{ij} = µ + \tau_i + \beta_j + ε_{ij}$
-where y : the height difference between the first day and 12th day
-    $\mu$ : overall mean 
-    $\tau_i$ : effect of ith treatment
-    $\beta_j$ :  effect of jth blocks
-    i : the number of level 1,2,3,4
-    j : the number of block 1,2 
 
-The assumption of RBCD is     
->  $ε_{ij} ~ N(0,\sigma^2)$
+where y : the height difference between the first day and 12th day  
+    $\mu$ : overall mean   
+    $\tau_i$ : effect of ith treatment  
+    $\beta_j$ :  effect of jth block  
+    i : the number of level 1,2,3,4  
+    j : the number of block 1,2   
 
-In RCBD, the residuals are assumed to be normally distributed with mean 0 and common variance $\sigma^2$.
+The assumption of RCBD is  
+
+> $ε_{ij} \sim N(0,\sigma^2)$
+
+That is, the residuals are assumed to be normally distributed with mean 0 and common variance $\sigma^2$.
     
 ###### (ii) Analysis
 
-The null hypothesis is all effect of treatments are the same so it can be written as $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4$. The alternative hypothesis is at least one of the effect of treatment is different. 
+The null hypothesis is all effect of treatments are the same so it is written as $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4$. The alternative hypothesis is at least one of the effect of treatment is different. 
 
 The table # shows the ANOVA result of RCBD. Since the p-value of the treatments is larger than 0.05 so we failed to reject the null hypothesis. We can conclude that there is no significant difference between cutting angle levels. This conclusion is consistent with the finding of the factorial design. In factorial design analysis, C stands for the cutting angle and it is not included in the final reduced model because it is insignificant. 
 
