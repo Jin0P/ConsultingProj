@@ -3,14 +3,14 @@ title: "Design Project"
 author: "Jason Proctor, Jinyoung Park"
 header-includes: \usepackage{setspace}\doublespacing
 output: 
-   html_document
+ bookdown::html_document2: default
 ---
 
-#### I. Balanced Incomplete Design for $2^4$ factorial design
+### I. Balanced Incomplete Design for $2^4$ factorial design
 
 We randomly divided the 16 roses into two blocks equally to make it balanced, and each block has 8 observations for $2^4$ factorial analysis so it is incomplete design.
 
-##### a. The effects model
+#### a. The effects model
 
 The effects model of BIBD for $2^4$ factorial design is;  
 
@@ -28,11 +28,40 @@ The effects model of BIBD for $2^4$ factorial design is similar to the $2^4$ fac
 
 ##### b. Factor Effects
 
-The number of total observations is the same with the total number of effects, so we have no degree of freedom for the residuals term. Without the degree of freedom in the residuals term, we cannot fine MSE because the denominator is zero, then we cannot find the F-statistics and the p-value to determine which effects is significant or need to be dropped out. Instead, we can find the absolute value of factor effects to determine which effect should be in the model. (table #) shows the factor effects and the half normal plot displays it. ABCD has the largest effect but it is confounded with block. The interaction term ABD and its nested terms AB, AD and BD appear to have large effect. The absolute value of factor effect of ABC is the same with the absolute value of factor effect of BD, which is 1.5. Also the absolute value of factor effect of CD is 1.35. So the effect of ABD, ABC and CD are included in the initial model. 
+```{r FactorEffect, warning=FALSE,echo =FALSE}
+A <- rep(c(-1,1), times=8)
+B <- rep(c(-1,1), each = 2, times=4)
+C <- rep(c(-1,1), each = 4, times=2)
+D <- rep(c(-1,1), each = 8)
+# (1),a,b,ab,c,ac,bc,abc,d,ad,bd,abd,cd,acd,bcd,abcd
+y <- c(6.2,0.5,1,8.2,2.5,1.5,2.8,4,1.5,4.6,5.6,1,6.6,0.5,1.5,4.4)
+
+ABCD <- A*B*C*D
+A <- as.factor(A)
+B <- as.factor(B)
+C <- as.factor(C)
+D <- as.factor(D)
+Block <- as.factor(ABCD)
+
+rose.data <- data.frame(A, B, C, D, Block, y)
+
+# absolute diff
+g <- lm(y~(A+B+C+D)^4)
+knitr::kable(g$effects, caption = "Factor Effect")
+```
+
+
+```{r Halfnormal, warning=FALSE, fig.cap = 'Half normal plot',echo =FALSE}
+effects <- abs(g$effects[-1])
+qq <- qqnorm(effects, type="n")  # "n" means no plotting
+text(qq$x, qq$y, labels = names(effects))
+```
+
+The number of total observations is the same with the total number of effects, so we have no degree of freedom for the residuals term. Without the degree of freedom in the residuals term, we cannot fine MSE because the denominator is zero, then we cannot find the F-statistics and the p-value to determine which effects is significant or need to be dropped out. Instead, we can find the absolute value of factor effects to determine which effect should be in the model. Table \@ref(tab:FactorEffect) shows the factor effects and the half normal plot (Figure \@ref(fig:Halfnormal)) displays it. ABCD has the largest effect but it is confounded with block. The interaction term ABD and its nested terms AB, AD and BD appear to have large effect. The absolute value of factor effect of ABC is the same with the absolute value of factor effect of BD, which is 1.5. Also the absolute value of factor effect of CD is 1.35. So the effect of ABD, ABC and CD are included in the initial model. 
 
 ##### c. Model fitting 
 
-The table # is the result of ANOVA of the initial model. Since the threshold of p-value ($\alpha$) to determine the significance is 0.05, ABC is the first effect to be removed from the model. Interestingly, the main effects and some interaction term that had p-value between 0.05 and 0.1, so it was arguable about its significance in the initial model, become insignificant in the second model, whilst AB and ABD could solidify its significance. DC and C also are removed from the model. In the final model, we have AB and ABD and all the nested terms - A,B,D,AD,BD. Note that if the interaction term is significant, all of the nested terms should be included in the model, even if those are insignificant. 
+The ANOVA result 1 is the result of ANOVA of the initial model. Since the threshold of p-value ($\alpha$) to determine the significance is 0.05, ABC is the first effect to be removed from the model. Interestingly, the main effects and some interaction term that had p-value between 0.05 and 0.1, so it was arguable about its significance in the initial model, become insignificant in the second model, whilst AB and ABD could solidify its significance. DC and C also are removed from the model. In the final model, we have AB and ABD and all the nested terms - A,B,D,AD,BD. Note that if the interaction term is significant, all of the nested terms should be included in the model, even if those are insignificant. 
 
 The effects model of final reduced model is;  
 
