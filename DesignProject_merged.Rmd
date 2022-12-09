@@ -1,0 +1,439 @@
+---
+title: "Keeping Roses Healthy: A Factorial and Randomized Complete Block Design Experiment"
+author: "Jason Proctor, Jinyoung Park"
+output: 
+ pdf_document: default
+
+---
+
+### Introduction
+  Gifting flowers to friends and relatives is an extremely popular activity in the United States and worldwide. On Mothers Day in 2022, Americans were expected to spend $2.6 billion on flowers alone(ref 1). This number is staggering and shows how culturally important flowers are to many groups of people. Unfortunately, there is no single universally held guideline for how to keep flowers alive and healthy longer. There are many different sources online that propose different ideas for how to keep flowers fresh. These include cutting the stem at an angle, using acidic or filtered water, controlling for temperature, refrigeration, and much more(ref 2,3). However, it is not thoroughly understood how well many of these factors work in practice, or if there are adverse effects when combining certain methods. 
+
+  In this paper, we investigate how some of the most popular methods affect rose health in an experimental setting. We focus on 4 factors that are believed to increase the longevity and health of roses. These factors include adequate flower plant food, using filtered water, cutting the stem at an angle, and refrigerating the flowers at night. With this, we hope to better understand how well these methods work in practice and if these effects are statistically significant.
+
+### Study Design
+  Our study design was split into 2 separate experiments that were run in tandem in two separate residences. These residences constituted a blocking variable within both designs. Our main analysis consisted of a $2^4$ factorial design with incomplete blocks. The supplementary experiment was conducted using Randomized Complete Block Design using 1 factor and 4 levels. 2 bouquets of white roses were purchased from Trader Joes, yielding a total amount of 24 roses across the 2 experiments. 16 of these roses were allocated to the $2^4$ factorial design, and the remaining 8 roses were allocated to the randomized control block design. The randomization process consisted as follows: First, the roses were randomly assigned to one of the two blocks. Within blocks, the roses were randomly allocated to each study design, and within each design the roses were randomly allocated to each factor/level combination. The roses were placed into separate identical red solo cups that were labeled for their study number and factor/level combination. The picture below shows the setup within one of the blocks.
+
+```{r, echo=FALSE}
+knitr::include_graphics("Picture1.png")
+```
+
+  To measure the “health” of the roses, the net difference in height after 12 days was measured. The roses were placed into their respective cups, and their heights were measured from the middle of the flower head down perpendicularly to the table that the cups were placed on. After 12 days, their heights were recorded again using the same method. The response variable was created by subtracting their initial height from their height after 12 days. The idea around this measurement is that as a rose starts to die, it will wilt and tilt over in its cup. That tilt can be measured and can be used to indirectly measure how healthy the rose is. If the difference in height is small, that is assumed to be due to the rose being more healthy (and vice versa).
+
+#### $2^4$ Factorial Design Main Experiment
+  The $2^4$ factorial incomplete design consisted of 16 observations total, yielding a total of one replicate. The four factors of interest were as follows: Factor A = A high concentration of plant food (vs a low concentration of plant food), Factor B = Using filtered water (vs using tap water), Factor C = Cutting the stem at an angle before being placed in the cup (vs cutting the stem flat), and Factor D = Refrigerating the observations at night (vs not refrigerating). In our experiment, “High Food” is the recommended flower food density, and “Low Food” is ½ the recommended flower food density. Water filtration occurred using standard home use water filters. In total, there were 16 factor/level combinations. Because the experiment was taken place across 2 separate residences, blocking was introduced, and the confounding of a variable was required. The interaction term ABCD was chosen as the confounding variable as this was the highest order interaction term within the experiment. Confounding was done by choosing the correct contracts and observations from the table below.
+
+```{r, echo = FALSE}
+A <- rep(c(-1,1), times=8)
+B <- rep(c(-1,1), each = 2, times=4)
+C <- rep(c(-1,1), each = 4, times=2)
+D <- rep(c(-1,1), each = 8)
+ABCD <- A*B*C*D
+index <- c("(1)","a","b","ab","c","ac","bc","abc","d","ad","bd","abd","cd","acd","bcd","abcd")
+knitr::kable(data.frame(index,A,B,C,D,ABCD),format="markdown")
+```
+  The observations that were in each block (residence) are found below. For each observation, if a letter is present, that denotes the “high” level of that factor, and if that letter is missing that denotes that a “low” level of that factor. (1) denotes the observation with “low” levels for all factors. All observations had their net change in height measured after 12 days.
+
+```{r, echo = FALSE}
+I <- c("(1)","ab","ac","bc","ad","bd","cd","abcd")
+II <- c("a","b","c","abc","d","abd","acd","bcd")
+knitr::kable(data.frame(I,II),format="markdown")
+```
+#### Randomized Complete Block Design
+  Our supplemental experiment uses 8 additional roses to perform on a more in-depth analysis of one of the factors from the $2^4$ factorial design. Factor C: Cutting Angle was chosen because online sources cite this factor as one of the most important aspects of keeping flowers alive longer in vases2. The angle of the cut is an important factor for water intake; if there is more cut surface area in contact with the water, the rose should be able to absorb more water, yielding healthier plants. Factor C was split into 4 different levels: Level 1= Cutting the stem at 45 degrees (this is the standard cut that most individuals are familiar with), Level 2 = Cutting at 75 degrees, Level 3 = Cutting Flat, Level 4= No cut stem prior to cup placement. 
+
+  Blocking was also introduced for this experiment to minimize the effect of potential nuisance factors (temperature, humidity, etc).  Each block had one observation per level, yielding 8 total observations. All observations had their net change in height measured after 12 days.
+
+### Statistical Analysis
+#### I. Balanced Incomplete Design for $2^4$ factorial design
+
+  We randomly divided the 16 roses into two blocks equally to make it balanced, and each block has eight observations for $2^4$ factorial analysis, so it is an incomplete design.
+
+##### a. The effects model
+
+  The effects model of BIBD for $2^4$ factorial design is;  
+
+> $y_{ijkl} = µ + A_i + B_j + C_k + D_l + AB_{ij} + AC_{ik} +...+ACD_{ikl}+BCD_{jkl}+ Block + ε_{ijkl}$
+
+where  
+Y(response): The height difference between the first day and 12th day  
+A(factor1) : flower food  
+B(factor2) : filtered water  
+C(factor3) : Cutting angle  
+D(factor4) : Storing in the refrigerator at night  
+i,j,l,k (levels)= 1,2  
+
+  The effects model of BIBD for $2^4$ factorial design is similar to the $2^4$ factorial design. The only difference is that ABCD is confounded with block.
+
+##### b. Factor Effects
+
+```{r FactorEffect, warning=FALSE,echo =FALSE}
+A <- rep(c(-1,1), times=8)
+B <- rep(c(-1,1), each = 2, times=4)
+C <- rep(c(-1,1), each = 4, times=2)
+D <- rep(c(-1,1), each = 8)
+# (1),a,b,ab,c,ac,bc,abc,d,ad,bd,abd,cd,acd,bcd,abcd
+y <- c(6.2,0.5,1,8.2,2.5,1.5,2.8,4,1.5,4.6,5.6,1,6.6,0.5,1.5,4.4)
+
+ABCD <- A*B*C*D
+A <- as.factor(A)
+B <- as.factor(B)
+C <- as.factor(C)
+D <- as.factor(D)
+Block <- as.factor(ABCD)
+
+rose.data <- data.frame(A, B, C, D, Block, y)
+
+# absolute diff
+g <- lm(y~(A+B+C+D)^4)
+g$effects
+```
+Output: factor effects 
+
+```{r Halfnormal, warning=FALSE, fig.cap = 'Figure1:Half normal plot',echo =FALSE}
+effects <- abs(g$effects[-1])
+qq <- qqnorm(effects, type="n")  # "n" means no plotting
+text(qq$x, qq$y, labels = names(effects))
+```
+
+  The number of total observations is the same as the total number of effects, so we have no degree of freedom for the residuals term. Without the degree of freedom in the residuals term, we cannot find MSE because the denominator is zero, so we cannot find the F-statistics and the p-value to determine which effects are significant or need to be dropped out. Instead, we can find the absolute value of factor effects to determine which effect should be in the model. Output factor effects shows the factor effects, and the half-normal plot (Figure 1) displays it. ABCD has the largest effect, but it is confounded with block. The interaction term ABD and its nested terms AB, AD, and BD appear to have large effects. The absolute value of the factor effect of ABC is the same as the absolute value of the factor effect of BD, which is 1.5. Also, the absolute value of the factor effect of CD is 1.35. So the effect of ABD, ABC, and CD are included in the initial model. 
+
+##### c. Model fitting 
+
+```{r, echo = FALSE}
+g1 <- lm(y~(A*B*D)+(A*B*C)+(C*D)+Block)
+anova(g1)
+```
+Output: Anova result1 
+
+```{r, echo = FALSE}
+g2 <- lm(y~(A*B*D)+C+Block)
+anova(g2)
+```
+Output: Anova result2
+
+```{r, echo = FALSE}
+g_final <- lm(y~(A*B*D)+Block)
+anova(g_final)
+```
+Output: Anova result3
+
+
+
+  The ANOVA result 1 is the result of the ANOVA of the initial model. Since the threshold of a p-value ($\alpha$) to determine the significance is 0.05, ABC is the first effect to be removed from the model. Interestingly, the main effects and some interaction terms that have a p-value between 0.05 and 0.1, so it is arguable about its significance in the initial model, become insignificant in the second model (Output: Anova result2), while AB and ABD could solidify its significance. DC and C also are removed from the model. In the final (Output: Anova result3), we have AB and ABD and all the nested terms - A, B, D, AD, and BD. Note that if the interaction term is significant, all nested terms should be included in the model, even if those are insignificant. 
+
+The effects model of final reduced model is;  
+
+> $y_{ijkl} = µ + A_i + B_j + D_l + AB_{ij} + AD_{il} +BD_{jl}+ABD_{ijl}+ Block + ε_{ijkl}$
+
+  Output: Anova result3 is the result of the ANOVA of the final reduced model. The interaction term ABD and AB are significant, while none of the main effects are significant. 
+
+##### d. Interaction plots of ABD and AB
+
+```{r interactionplot1, message = FALSE, warning=FALSE, fig.cap = 'Figure2:Interaction Plot of ABD',echo =FALSE}
+# ABD interaction plot
+
+library(dae)
+interaction.ABC.plot(y, x.factor=A,
+                     groups.factor=B, trace.factor=D,
+                     data=rose.data,
+                     title="ABD interaction plot")
+```
+
+```{r interactionplot2, message = FALSE, warning=FALSE, fig.cap = 'Figure3:Interaction Plot of AB',echo =FALSE}
+interaction.plot(B,A,y)
+```
+
+  Figure 2 is the interaction plot of ABD. When D is 1, the slopes of the red line and the dashed blue line are not paralleled but are quite similar. The signs of the slopes are all negative, and the two lines are located close to each other. However, when D is -1, which means the roses were not stored in the refrigerator at night, the two slopes showed the opposite direction. We want the smallest y, assuming that means the healthiest rose. In the interaction plot ABD, we can find that y has the smallest value when D = -1 and B = -1 but only A = 1. This means that when not storing the roses in the refrigerator at night and putting tap water with the recommended amount of flower food, roses would stay healthy longer. 
+
+  The interaction plot of AB (Figure 3) shows the relationship between flower food and water on the longevity of the roses. The two lines are not paralleled, so the interaction effect is confirmed. In the interaction plot AB, we can find that y has the smallest value when B = -1 and A = 1. This means that when putting the recommended amount of flower food in tap water, the roses stay healthy longer. The interesting finding is that when B=1 and A=1, which means putting the roses in filtered water with the recommended amount of flower food, it is likely to get the worst result. 
+
+##### e. Regression model 
+
+```{r, echo = FALSE}
+summary(g_final)
+```
+Output:regression model
+
+  We checked the linear regression result. Interestingly, the main effects, A and B, which are insignificant in the ANOVA, are significant in the regression model. 
+
+
+##### f. Assumption Checks 
+  ANOVA assumes that the residuals should be normally distributed with a mean of 0. Also, it assumes homogeneity of variance, which means the variance among the groups should be approximately equal. 
+
+###### (i) Normality assumption check
+```{r NormalityFactorial, message = FALSE, warning=FALSE, fig.cap = 'Figure4:Normal Q-Q Plot ',echo =FALSE}
+# normality assumption check 
+qqnorm(g_final$residuals)
+qqline(g_final$residuals)
+```
+
+```{r, echo = FALSE}
+shapiro.test(g_final$residuals) 
+```
+Output: Shapiro test for Factorial Design
+
+  Shapiro-Wilk's W test and Q-Q plot are used to test the assumption of normal distribution. In the Q-Q plot(Figure 4), the plotted residuals are not departed from the straight line, which means it is normally distributed. Shapiro-Wilk's test result is consistent with the finding in the QQ plot. The p-value of the Shapiro test shows insignificant (p-value >0.05), so we can confirm that the assumption of normality is met.
+  
+###### (ii) Homogeneity of variance check 
+
+```{r HomoFactorial, message = FALSE, warnings=FALSE, fig.cap = 'Figure5:the scatter plot of residuals versus fitted value',echo =FALSE}
+# the scatter plot of residuals and fitted value
+plot(g_final$residuals,g_final$fitted.values)
+```
+
+```{r, echo = FALSE, message = FALSE, Warnings = FALSE}
+library(car)
+leveneTest(y ~ as.factor(A)*as.factor(B)*as.factor(D)) 
+```
+Output : Levene's test 
+
+  Levene's test and the scatter plot of residuals versus fitted values are used to test the assumption of homogeneity of variance. The scatter plot of residuals versus fitted values is used to detect unequal error variances. The scatter plot (Figure 5) shows a megaphone pattern, so the assumption seems to be violated. Levene's test's significance (p-value < 0.05) confirmed the violation of the homogeneity of variance assumption. 
+ 
+  Since ANOVA is robust to violations of the assumption of homogeneity of variance, we can trust the findings. However, the possibility that the analysis's conclusion is invalid remains. Therefore, we can consider nonparametric alternative ANOVA tests which do not assume equality of variance, such as the Kruskal-Wallis test. (ref 4)
+
+
+#### II. Random Complete Block Design
+##### a. Exploratory Analysis 
+```{r RCBDdata,echo = FALSE, message = FALSE, warnings = FALSE}
+I <- c(1,4.5,2.5,10)
+II <- c(1.7,1.9,4.5,7.5)
+y <- c(I,II)
+treatments <- as.factor(rep(1:4, time=2))
+blocks <- as.factor(rep(1:2, each = 4))
+RCBD.data <- data.frame(y,treatments,blocks)
+knitr::kable(data.frame(level = c(1:4), I, II),format="markdown")
+```
+Table 1: RCBD data
+
+```{r Boxplot1, message = FALSE, warnings=FALSE, fig.cap = 'Figure6:boxplot of blocks',echo =FALSE}
+ par(mfrow=c(1,2))  # A 1 by 2 panel of plots
+ boxplot(y~blocks, xlab="blocks")
+```
+
+```{r Boxplot2, message = FALSE, warnings=FALSE, fig.cap = 'Figure7:boxplot of treatments',echo =FALSE}
+ boxplot(y~treatments, xlab="treatments")
+```
+
+  The collected data (Table 1:RCBD data) has one factor with four levels with one replicate in two blocks, so the total observation number is eight. The box plot of blocks (Figure 6) shows that the data of block I is more widely spread than the data of block II. The box plot of treatments (Figure 7) shows that level 1 (45' angle cut) has the lowest y value while level 4 (no cut) has the highest y value. Level 2(75' angle cut) and level 3(flat cut) do not appear to have any noticeable differences.   
+
+##### b.ANOVA
+###### (i) Effects model of RCBD and Assumption
+The effects model of RCBD is;
+
+> $y_{ij} = µ + \tau_i + \beta_j + ε_{ij}$
+
+where y : the height difference between the first day and 12th day  
+    $\mu$ : overall mean   
+    $\tau_i$ : effect of ith treatment  
+    $\beta_j$ :  effect of jth block  
+    i : the number of level 1,2,3,4  
+    j : the number of block 1,2   
+
+The assumption of RCBD is  
+
+> $ε_{ij} \sim N(0,\sigma^2)$
+
+  That is, the residuals are assumed to be normally distributed with mean 0 and common variance $\sigma^2$.
+    
+###### (ii) Analysis
+
+```{r, echo = FALSE}
+ # Get the ANOVA table of RCBD
+ RCBD <- lm(y~treatments + blocks)
+ anova(RCBD)
+```
+Output : ANOVA of RCBD
+
+  The null hypothesis is that all effects of treatments are the same and written as $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4$. The alternative hypothesis is that at least one of the effects of treatments is different. 
+
+  The output shows the ANOVA result of RCBD. Since the p-value of the treatments is larger than 0.05, we failed to reject the null hypothesis. Therefore, we can conclude that there is no significant difference between cutting angle levels. This conclusion is consistent with the finding of the factorial design. In factorial design analysis, C stands for the cutting angle, and it is not included in the final reduced model because it is insignificant.
+
+##### c. Assumption check 
+###### (i) Normality assumption check
+```{r Normality2, message = FALSE, warnings=FALSE, fig.cap = 'Figure8:Q-Q plot',echo =FALSE}
+ resid <- RCBD$residuals
+ qqnorm(resid)
+ qqline(resid)
+```
+```{r, echo=FALSE}
+ shapiro.test(resid)
+```
+Output : Shapiro-Wilk's test
+
+  Shapiro-Wilk's W test and Q-Q plot are used to test the assumption of normal distribution. In the Q-Q plot(Figure 8), the plotted residuals are not departed from the straight line, which means it is normally distributed. Shapiro-Wilk's test result is consistent with the finding in the QQ plot. The p-value of the Shapiro test shows its insignificance (p-value >0.05), so we can conclude that the assumption of normality is met.
+
+###### (ii) Homogeneity of variance check 
+```{r Homogeneity2, message = FALSE, warnings=FALSE, fig.cap = 'Figure9:the scatter plot of residuals versus fitted values',echo =FALSE}
+ plot(RCBD$residuals,RCBD$fitted.values)
+```
+```{r, echo=FALSE}
+ bartlett.test(y,treatments)
+```
+Output : Bartlett test
+
+  Barlett's test and the scatter plot of residuals versus fitted values are used to test the assumption of homogeneity of variance. The scatter plot (Figure 9) does not appear to have any pattern, so the assumption of homogeneity of variance seems to be valid. The insignificance (p-value > 0.05) of Barlett's test confirmed that the assumption of homogeneity of variance meets. 
+
+##### d. Tukey comparisons
+```{r, echo = FALSE}
+ # tukey comparisons
+  tukey_RCBD_95<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.95)
+  tukey_RCBD_95
+```
+Output : Tukey comparison 
+
+```{r Tukey1, message = FALSE, warnings=FALSE,echo =FALSE}
+  plot(tukey_RCBD_95)
+```
+```{r Tukey2, message = FALSE, warnings=FALSE,echo =FALSE}
+  tukey_RCBD_90<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.90)
+  plot(tukey_RCBD_90)
+```
+  Since the insignificance of the cutting angle is confirmed, the Tukey comparison is not required as the ad hoc testing. However, since the box plot shows some noticeable differences between cutting angle 45 (level 1) and no cut (level 4), we decided to check the Tukey comparisons. 
+  When level 4 is compared with other levels, the differences between the two levels are larger than the differences between other levels, but all of the confidence levels cover zero, so it shows there is no significant difference at the 5% level. Also, even at the 10% level, the Tukey comparison shows that most confidence levels cover zero except for the comparison between level 1 and level 4. So, we could confirm the insignificance of the cutting angle levels.  
+
+### Conclusions
+  The conclusions of the factorial design experiment are mixed. The ANOVA of our final model shows no significance for any of the main effects. However, the interaction, between High Food and Filtered water (AB) is significant. In addition, the interaction between High Food, Filtered Water, and refrigerated (ABD) is significant. The block variable was also significant. We reject the null hypothesis at alpha =0.5, and have evidence to show that the means of the AB group are not equal. This is also true for ABD and the blocking variable.
+
+  The final regression model does show that the main effect coefficients for High Food (A) and Filtered Water (B) were significant. The interaction terms that are stated above were also still significant and had large coefficients (AB = 7.55, ABD = -6.9). It is hard to say which combination of factors yields the greatest decrease in change of height because most the interaction terms in the model have opposite signs to their individual main effects. Thus, it may have been possible in the ANOVA that the main effects for A and B are being masked by the large effect of their interaction. From our model, it appears it would be best to only give High Food or use Filtered Water (not both) when trying to keep roses healthier longer.
+
+  The randomized controlled block design showed no significant difference in change of height between cutting angle levels. This was not surprising, as the main effect for cutting angle was also removed from the ANOVA and regression model of the factorial design. The increase in surface area that is in contact with the water does not appear to improve the health outcomes and longevity of these flowers. This conclusion is at odds with sources discussing the importance of cutting at an angle prior to vase placement2. Cutting angle still may be important to the health of the plant, but our findings suggest that this effect is minimal and not statistically significant. 
+
+  More research is needed to better understand the effects of these factors on the overall health of roses. 
+
+#### Caveats
+  There are a few caveats that need to be addressed from our experiment that may impact its validity and conclusions. First, we realized in this experiment that roses are extremely sensitive to specific conditions that were hard to control for. This experiment took place during the late autumn, and both residences reported having very warm and dry indoor air conditions. In addition, there were other nuisance factors that could not be controlled, including the amount of sunlight received or side of window that the roses were placed near. All these nuisance variables may have resulted in very different measurements than what was expected.
+
+  In addition, we now believe that change in height was not the optimal measurement to use in this experiment. Change in height is only indirectly evaluating the overall “health” of the roses, and did not adequately address how each rose was effected by their conditions. For example, some of the flowers were visibly unhealthy and drying out, but did not tip over in a way that was expected. This resulted in response measurements that reported roses as “healthier” than they appeared.
+
+#### Future Work
+  Future work of this experiment should address the caveats listed above. First, there should be more replicates included in the experiment. This would allow more aggregate data to be collected and a clearer picture of what is happening to the flowers under different conditions. Nuisance factors should also be better controlled for, including controlling for temperature, humidity, sunlight, and other factors that are extremely important to the health of roses.
+
+  Finally, we believe that a better measurement should be used to evaluate the health of the flower. One potential idea is to measure the change in weight after a certain number of days. This would account for the variability in tilting length that was problematic in our design. Another potential alternative could be intentionally putting subjectivity back into the study design. An example of this could be ranking the overall appearance or “health” of the flowers after a certain number of days. This intentionality would allow us to better estimate how well a flower is doing using a more wholistic estimate, instead of only change in height. 
+
+\pagebreak
+---
+#### Reference
+1.	National Retail Federation. 2022. https://nrf.com/media-center/press-releases/mothers-day-spending-reach-record-high
+2.	 MasterClass. “How to Keep Flowers Fresh” Sept 28, 2021.  https://www.masterclass.com/articles/how-to-keep-flowers-fresh
+3.	Pace, Maggie. “Which Water Is Best For Plants – Distilled or Filtered?”  Aquasana. https://www.aquasana.com/info/benefits-of-using-filtered-water-on-plants-pd.html
+4.	Statistics Solutions. https://www.statisticssolutions.com/free-resources/directory-of-statistical-analyses/testing-of-assumptions/
+
+\pagebreak
+---
+#### R code
+
+#### I. Balanced Incomplete Block Design for $2^4$ factorial design 
+```{r warning=FALSE, eval = FALSE}
+A <- rep(c(-1,1), times=8)
+B <- rep(c(-1,1), each = 2, times=4)
+C <- rep(c(-1,1), each = 4, times=2)
+D <- rep(c(-1,1), each = 8)
+# (1),a,b,ab,c,ac,bc,abc,d,ad,bd,abd,cd,acd,bcd,abcd
+y <- c(6.2,0.5,1,8.2,2.5,1.5,2.8,4,1.5,4.6,5.6,1,6.6,0.5,1.5,4.4)
+
+ABCD <- A*B*C*D
+A <- as.factor(A)
+B <- as.factor(B)
+C <- as.factor(C)
+D <- as.factor(D)
+Block <- as.factor(ABCD)
+
+rose.data <- data.frame(A, B, C, D, Block, y)
+
+# absolute diff
+g <- lm(y~(A+B+C+D)^4)
+g$effects
+
+effects <- abs(g$effects[-1])
+qq <- qqnorm(effects, type="n")  # "n" means no plotting
+text(qq$x, qq$y, labels = names(effects))
+
+g1 <- lm(y~(A*B*D)+(A*B*C)+(C*D)+Block)
+anova(g1)
+
+g2 <- lm(y~(A*B*D)+C+Block)
+anova(g2)
+
+g_final <- lm(y~(A*B*D)+Block)
+anova(g_final)
+summary(g_final)
+
+# ABD interaction plot
+
+library(dae)
+interaction.ABC.plot(y, x.factor=A,
+                     groups.factor=B, trace.factor=D,
+                     data=rose.data,
+                     title="ABD interaction plot")
+
+# AB interaction plot
+interaction.plot(B,A,y)
+
+# normality assumption check 
+qqnorm(g_final$residuals)
+qqline(g_final$residuals)
+shapiro.test(g_final$residuals) 
+
+# Homoscadasity test 
+
+# the scatter plot of residuals and fitted value
+plot(g_final$fitted.values,g_final$residuals)
+
+# Homoscedasticity One way
+gaov<-aov(y~A*B*D)
+bartlett.test(gaov$residuals~A)
+bartlett.test(gaov$residuals~B)
+bartlett.test(gaov$residuals~D)
+
+library(car)
+leveneTest(y ~ as.factor(A)*as.factor(B)*as.factor(D)) 
+leveneTest(y ~ as.factor(A)*as.factor(B)) 
+```
+
+#### II. RCBD
+
+```{r, eval = FALSE}
+I <- c(1,4.5,2.5,10)
+II <- c(1.7,1.9,4.5,7.5)
+y <- c(I,II)
+treatments <- as.factor(rep(1:4, time=2))
+blocks <- as.factor(rep(1:2, each = 4))
+RCBD.data <- data.frame(y,treatments,blocks)
+
+
+ par(mfrow=c(1,2))  # A 1 by 2 panel of plots
+ boxplot(y~blocks, xlab="blocks")
+ boxplot(y~treatments, xlab="treatments")
+ 
+ # Get the ANOVA table of RCBD
+ RCBD <- lm(y~treatments + blocks)
+ anova(RCBD)
+
+ #normality assumption check
+ resid <- RCBD$residuals
+ qqnorm(resid)
+ qqline(resid)
+ shapiro.test(resid)
+ 
+ # equal varance assumption check 
+ bartlett.test(y,treatments)
+ plot(RCBD$residuals,RCBD$fitted.values)
+ 
+ # tukey comparisons
+  tukey_RCBD_95<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.95)
+  tukey_RCBD_95
+  plot(tukey_RCBD_95)
+ 
+  tukey_RCBD_90<-TukeyHSD(aov(y~ blocks+treatments), conf.level=0.90)
+  plot(tukey_RCBD_90)
+ 
+```
+
+
+---
+\newpage
+#### Individual Contributions
+Jinyoung Park: collecting data block II for factorial design and block I for RCBD, Statistical Analysis : coding, report writing/editing     
+
+
