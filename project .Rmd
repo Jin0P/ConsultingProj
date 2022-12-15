@@ -41,12 +41,12 @@ MUA_data1$BTKA <- ifelse(MUA_data1$date_diff==0, "Yes","No")
 
 # age
 MUA_data1$Fac_age_C_TKA <- ifelse(MUA_data1$age_C_TKA<50,"less50",
-                                   ifelse(MUA_data1$age_C_TKA<60, "50s",
-                                  ifelse(MUA_data1$age_C_TKA<70,"60s","over70s")))
+ifelse(MUA_data1$age_C_TKA<60, "50s",
+ifelse(MUA_data1$age_C_TKA<70,"60s","over70s")))
 
 MUA_data1$Fac_age_TKA <- ifelse(MUA_data1$age<50,"less50",
-                                   ifelse(MUA_data1$age<60, "50s",
-                                       ifelse(MUA_data1$age<70, "60s","over70s")))
+ifelse(MUA_data1$age<60, "50s",
+ifelse(MUA_data1$age<70, "60s","over70s")))
 
 # race 
 MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian","Asian"), "Other",MUA_data1$race)
@@ -55,7 +55,6 @@ MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Ot
 MUA_data1$ethnicity <- ifelse(MUA_data1$ethnicity %in% c("Prefers not to answer"), "Non-Hispanic Origin",MUA_data1$ethnicity)
 
 #Insurance
-
 names(MUA_data1)[13] <- c("Insurance")
 MUA_data1$Insurance <- 
   ifelse(MUA_data1$Insurance %in% c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp","Worker's Comp LUHS"), "Private",
@@ -320,7 +319,7 @@ ggbarstats(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
   )
-) + scale_fill_manual(values = c( "orchid1","skyblue2"))
+) + scale_fill_manual(values=c("#69b3a2", "#404080"))
 
 ```
 
@@ -986,11 +985,12 @@ summary(mua_glm)
 ```{r}
 library(glmnet)
 y = MUA_data1$C_MUA_bi
-MUA_data2 = MUA_data1[,c(108, 6, 9,74:78, 80:104, 119)] #Your exact columns may be different
-d <- data.frame(x=MUA_data2, y=y)
+MUA_data2 = MUA_data1[,c(108, 6, 9,75:78, 80:89,91:104,106,116,118)] # Fac_age_C_TKA(116) is included instead of age_C_TKA(74), Diabetes_cc_C_TKA(90) is removed b/c it's duplicated with Diabetes_no_cc_C_TKA
+# 108: MUA_bi,  6 : sex, 9: ethnicity, 75: bmi_C_TKA, 76: tobacco_C_TKA,  77: Insurance_C_TKA, 78: los_C_TKA, 80:ASA_C_TKA, 81: op_time_C_TKA, 82~103: comorbidities, 104:readmit_90d_C_TKA, 106:ed_90d_C_TKA,116:Fac_age_C_TKA, 118: redu_race       
+MUA_data2$ASA_C_TKA<-as.factor(MUA_data2$ASA_C_TKA)
 
-options(na.action="na.pass")
-m <- model.matrix(y ~ ., data=d)
+d <- data.frame(x=MUA_data2, y=y)
+m <- model.matrix(y ~ ., data=d)[,-1]
 
 set.seed(1234)
 cv.out = cv.glmnet(m, y, alpha =1,family="binomial")
@@ -1001,127 +1001,111 @@ bestlam
 lasso.mod = glmnet(m, y, alpha= 1, lambda = bestlam,family="binomial")
 coef(lasso.mod)
 paste0(round(coef(lasso.mod)@x,4),"X",coef(lasso.mod)@i, collapse=" + ")
+colnames(m)
+
+##### ROC
+#lasso.mod = lasso mod using bestlam from cv.glmnet
+#m = original model matrix
+predict_fit = predict(lasso.mod, m, type = "response")
+
+library(pROC)
+roc_score=roc(predictor=as.vector(predict_fit), response = y ) 
+
+#ROC Plot
+plot(roc_score ,main ="ROC curve -Lasso Regression") 
+roc_score$auc #AUC score
+
+##### Bootstrapping AUC to find 95% CI
+#Finding Bootstrapped AUC confidence intervals
+library(fbroc)
+boot_roc = boot.roc(as.numeric(predict_fit), as.logical(y), n.boot = 10000)
+plot(boot_roc)
+
+w=perf(boot_roc, "auc") #Measuring performance
+w #AUC confidence interval
+hist(w$boot.results, main = "Bootstrapped AUC Values", xlab = "Area Under Curve") #Histogram of bootstrapped AUC
+
 ```
 
-###### b. ordinary test/train 
+-4.6203 + 1.2847MUA_bi + 0.9442Insurance_C_TKAWork_Comp + 2.0399blood_transfusion_C_TKA
+
+
+###### b. leave one out cross validation 
 ```{r}
-library(fastDummies)
-MUA_data2 = MUA_data1[,c(108:109,6,9,74:75,77:78,80:89,91:104,118,120)] 
-MUA_data3 <- dummy_cols(MUA_data2, select_columns = c("sex","ethnicity","Insurance_C_TKA","ASA_C_TKA","redu_tobacco_C_TKA","redu_race"),remove_selected_columns = TRUE)
-MUA_data3$readmit_90d_C_TKA <- as.integer(MUA_data3$readmit_90d_C_TKA)
-MUA_data3 <- as.data.frame(MUA_data3)
+#library(glmnet)
+#y = MUA_data1$C_MUA_bi
+#MUA_data2 = MUA_data1[,c(108, 6, 9,75:78, 80:89,91:104,106,116,118)] # Fac_age_C_TKA(116) is included instead of age_C_TKA(74), Diabetes_cc_C_TKA(90) is removed b/c it's duplicated with Diabetes_no_cc_C_TKA
+# 108: MUA_bi,  6 : sex, 9: ethnicity, 75: bmi_C_TKA, 76: tobacco_C_TKA,  77: Insurance_C_TKA, 78: los_C_TKA, 80:ASA_C_TKA, 81: op_time_C_TKA, 82~103: comorbidities, 104:readmit_90d_C_TKA, 106:ed_90d_C_TKA,116:Fac_age_C_TKA, 118: redu_race       
+#MUA_data2$ASA_C_TKA<-as.factor(MUA_data2$ASA_C_TKA)
 
-set.seed(123)
-folds <- sample(1:5,nrow(MUA_data3), replace = TRUE)
-max_folds <- max(c(sum(folds==1),sum(folds==2),sum(folds==3),sum(folds==4),sum(folds==5)))
+#d <- data.frame(x=MUA_data2, y=y)
+#m <- model.matrix(y ~ ., data=d)[,-1]
 
-lasso.mod <- list()
-predict_C_MUA <- matrix(nrow=max_folds, ncol = 5, NA)
-spec <- c()
-bestlam <- c()
+pred_prob <- c()
+for(i in 1:nrow(d)){
+y_train = d[-i,]$y
+x_train = m[-i,]
 
-for(i in 1:5){
-y_train = MUA_data3[folds!=i,]$C_MUA_bi
-x_train = as.matrix(MUA_data3[folds!=i,-2])
-
-y_test = MUA_data3[folds==i,]$C_MUA_bi
-x_test = as.matrix(MUA_data3[folds==i,-2])
+y_test = d[i,]$y
+x_test = m[i,]
 
 set.seed(1234)
 cv.out = cv.glmnet(x_train, y_train, alpha =1,family="binomial")
-plot(cv.out)
-bestlam = cv.out$lambda.min
-bestlam[i]
-
-lasso.mod[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
-pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,,type="response")
-predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
-spec[i] <- sum(predict_C_MUA*y_test)/ sum(y_test)
-}
-
-predict(lasso.mod[[1]],s=bestlam[1],type="coefficients")
-predict(lasso.mod[[5]],s=bestlam[5],type="coefficients")
-
-```
-###### c. over sampling 
-```{r}
-#over sampling
-library(ROSE)
-MUA_data4 <- MUA_data3
-MUA_names<- names(MUA_data4)
-colnames(MUA_data4) <- paste0('x',1:46)
-
-spec.over <- c()
-for(i in 1:5){
-MUA_over_train <- ovun.sample(x2 ~ ., data = MUA_data4[folds !=1,], method = "both",N = sum(MUA_data3[folds !=1,2]==0)*2, p = 0.5,seed=1)$data
-y_train = MUA_over_train$x2
-x_train = as.matrix(MUA_over_train[,-2])
-
-y_test = MUA_data4[folds==i,2]
-x_test = as.matrix(MUA_data4[folds==i,-2])
-
-set.seed(1234)
-cv.out = cv.glmnet(x_train, y_train, alpha =1,family="binomial")
-plot(cv.out)
 bestlam = cv.out$lambda.min
 
-lasso.mod[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
-pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,,type="response")
-predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
-spec.over[i] <- sum(predict_C_MUA*y_test)/sum(y_test)
+lasso.mod = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
+pred_prob[i] <- predict(lasso.mod,s = bestlam, newx = x_test,type="response")
 }
 
-sum(predict_C_MUA); sum(y_test)
-predict(lasso.mod[[1]],s=bestlam[1],type="coefficients")
-predict(lasso.mod[[5]],s=bestlam[5],type="coefficients")
+pred_C_MUA<-cbind(pred_prob,y)
+pred_C_MUA[y==1,]
+mean(pred_C_MUA[y==0,1])
+mean(pred_C_MUA[y==1,1])
+
+library(pROC)
+roc_score_predictpower=roc(predictor=as.vector(pred_prob), response = y ) 
+
+#ROC Plot
+plot(roc_score_predictpower ,main ="ROC curve -Lasso Regression(LOOCV) ") 
+roc_score_predictpower$auc #AUC score
 
 ```
 
-###### d. Stratified k-fold Cross-Validation
-```{r}
-# reference : https://statisticsglobe.com/stratified-k-fold-cross-validation-r
-
-library(data.table)
-library("rpart")  
-
-k_folds <- 5   
-y=MUA_data3[,2]
-X=MUA_data3[,-2]
-data_ex <- data.table(y,X, fold = 0)  
-
-for (y_i in 0:1 ) {                                          # Create stratified folds
-  nrow_i       <- nrow(data_ex[y == y_i,])
-  n_per_fold_i <- ceiling(nrow_i / k_folds)
-  data_ex[y == y_i, fold := sample(rep(1:k_folds, n_per_fold_i), nrow_i, replace = FALSE)]
-}
-data_ex[, table(y, fold)]
 
 
-# LASSO
-lasso.mod.st <- list()
-spec.st <- c()
-bestlam <- c()
-
-for(i in 1:5){
-y_train = as.vector(data_ex[fold!=i,1]$y)
-x_train = as.matrix(data_ex[fold!=i,-c(1,47)])
 
 
-y_test = as.vector(data_ex[fold==i,1]$y)
-x_test = as.matrix(data_ex[fold==i,-c(1,47)])
 
-set.seed(1234)
-cv.out = cv.glmnet(x_train, y_train, alpha =1,family="binomial")
-plot(cv.out)
-bestlam = cv.out$lambda.min
-bestlam[i]
 
-lasso.mod.st[[i]] = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
-pred_prob <- predict(lasso.mod[[i]], s = bestlam, newx = x_test,type="response")
-predict_C_MUA <- ifelse(pred_prob > sum(y_train)/length(y_train),1,0)
-spec.st[i] <- sum(predict_C_MUA*y_test)/ sum(y_test)
-}
 
-sum(predict_C_MUA);  sum(y_test)
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
