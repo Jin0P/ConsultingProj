@@ -1,0 +1,1158 @@
+---
+title: "consulting project"
+date: "2022-11-10"
+output: html_document
+---
+
+```{r data_setup, message = FALSE, warning = FALSE, echo = FALSE}
+#Model building
+
+library(readxl)
+library(tidyverse)
+library(tree)
+library(gam)
+library(ggplot2)
+library(glmnet)
+library(fastDummies)
+library(ggcorrplot)
+library(gtsummary)
+
+#### data setup
+MUA_data = read_excel("TKAMUA5_IDSET_Nov02.xlsx", sheet = "Final", range = cell_rows(3:668), col_names=TRUE)
+
+unique(MUA_data$financial_class)
+
+#Changing MUA/C_MUA in to binary 1 or 0
+MUA_data1 = mutate(MUA_data,
+  MUA_bi= ifelse(MUA == "Yes", 1, 0),
+  C_MUA_bi = ifelse(C_MUA == "Yes", 1, 0),
+  MUA_count_T = ifelse(MUA_type == "Both", mua_count +1, mua_count),
+  age_diff = age_C_TKA - age,
+  los_total = los+los_C_TKA,
+  op_time_total = op_time+ op_time_C_TKA,
+  date_diff =as.Date(`Date of contralateral TKA`) - as.Date(surgery_date) )
+
+MUA_data1$date_diff <- ifelse(MUA_data1$date_diff <0, -MUA_data1$date_diff,MUA_data1$date_diff)
+
+MUA_data1 = MUA_data1[1:665,]
+
+MUA_data1$C_MUA<- as.factor(MUA_data1$C_MUA)
+MUA_data1$MUA<- as.factor(MUA_data1$MUA)
+
+MUA_data1$BTKA <- ifelse(MUA_data1$date_diff==0, "Yes","No")   
+
+# age
+MUA_data1$Fac_age_C_TKA <- ifelse(MUA_data1$age_C_TKA<50,"less50",
+ifelse(MUA_data1$age_C_TKA<60, "50s",
+ifelse(MUA_data1$age_C_TKA<70,"60s","over70s")))
+
+MUA_data1$Fac_age_TKA <- ifelse(MUA_data1$age<50,"less50",
+ifelse(MUA_data1$age<60, "50s",
+ifelse(MUA_data1$age<70, "60s","over70s")))
+
+# race 
+MUA_data1$redu_race <- ifelse(MUA_data1$race %in% c("Hispanic","Multiracial","Other","Preference not indicated","American Indian","Asian"), "Other",MUA_data1$race)
+
+#ethnicity
+MUA_data1$ethnicity <- ifelse(MUA_data1$ethnicity %in% c("Prefers not to answer"), "Non-Hispanic Origin",MUA_data1$ethnicity)
+
+#Insurance
+names(MUA_data1)[13] <- c("Insurance")
+MUA_data1$Insurance <- 
+  ifelse(MUA_data1$Insurance %in% c("Blue Cross Commercial","Commercial LUHS","Insurance","Worker's Comp","Worker's Comp LUHS"), "Private",
+    ifelse(MUA_data1$Insurance %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
+      ifelse(MUA_data1$Insurance %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured")))
+
+names(MUA_data1)[77] <- c("Insurance_C_TKA")
+MUA_data1$Insurance_C_TKA <- 
+  ifelse(MUA_data1$Insurance_C_TKA %in% c("Blue Cross Commercial","Commercial LUHS","Insurance"), "Private",
+         ifelse(MUA_data1$Insurance_C_TKA %in% c("Medicare","Medicare LUHS","Managed Medicare"),"Medicare",
+                ifelse(MUA_data1$Insurance_C_TKA %in% c("Worker's Comp","Worker's Comp LUHS"), "Work_Comp",
+                       ifelse(MUA_data1$Insurance_C_TKA %in% c("Managed Medicaid","Medicaid","MMAI"),"Medicaid","Uninsured"))))
+
+
+### tobacco
+MUA_data1$tobacco_C_TKA<- ifelse(is.na(MUA_data1$tobacco_C_TKA)==TRUE, MUA_data1$tobacco,MUA_data1$tobacco_C_TKA) 
+MUA_data1$redu_tobacco <- ifelse(MUA_data1$tobacco %in% c("Passive","Yes"), "Yes","No")
+MUA_data1$redu_tobacco_C_TKA <- ifelse(MUA_data1$tobacco_C_TKA %in% c("Passive","Yes"), "Yes","No")
+
+library(tidyverse)
+MUA_data1 %>% group_by(tobacco) %>% count()
+
+### ASA
+
+# missing value 
+MUA_data1$ASA<- ifelse(is.na(MUA_data1$ASA)==TRUE, MUA_data1$ASA_C_TKA,MUA_data1$ASA) 
+
+MUA_data1$redu_ASA_C_TKA <- ifelse(MUA_data1$ASA_C_TKA %in% c(2,3),"2/3","else")
+MUA_data1$redu_ASA <- ifelse(MUA_data1$ASA %in% c(2,3),"2/3","else")
+
+
+###los
+MUA_data1$los_C_TKA<- ifelse(is.na(MUA_data1$los_C_TKA)==TRUE, MUA_data1$los,MUA_data1$los_C_TKA) 
+
+
+
+```
+
+o #### Q1: MUA is a risk factor of C_MUA? - Yes
+
+```{r message = FALSE, warning = FALSE}
+#Pearson's Chi-squared test
+chisq.test(MUA_data1$MUA, MUA_data1$C_MUA)
+```
+
+##### \* Mosic plot
+
+```{r echo = FALSE}
+Q1_data <- MUA_data1[, 108:109]
+colnames(Q1_data)<- c("MUA", "C_MUA" )
+Q1_table <- table(Q1_data)
+rownames(Q1_table) <- c("No MUA", "MUA")
+colnames(Q1_table) <- c("No C_MUA", "C_MUA")
+
+#mosicplot
+mosaicplot(Q1_table, main = "MUA plot", color = TRUE)
+```
+
+##### \* Fisher's exact test for count data
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# fisher's exact test for count data 
+test<-fisher.test(Q1_table)
+
+# combine plot and statistical test with ggbarstats
+library(ggstatsplot)
+ggbarstats(
+  Q1_data, MUA, C_MUA,
+  results.subtitle = FALSE,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+)
+
+```
+
+##### \* Logistic regression model
+
+```{r}
+
+#Model with  MUA predicting C_mua
+mua_glm = glm(C_MUA ~ MUA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+```
+
+-   logit(odds) = -4.5061 + 2.5602\*MUA_bi (0/1)
+-   if the patient got MUA, the odds of getting C_MUA is exp(-4.5061 + 2.5602) = 0.1428586
+-   if the patient didn't get MUA, the odds of getting C_MUA is exp(-4.5061) = 0.01104144
+
+##### \* Odds Ratio & Correlation
+
+```{r}
+#Odds ratio
+exp(mua_glm$coefficients[-1])  
+```
+
+Odds of receiving MUA on contralateral knee is almost 13x times larger than not
+
+```{r}
+cor(MUA_data1$C_MUA_bi,MUA_data1$MUA_bi)
+```
+
+------------------------------------------------------------------------
+
+#### Q2: is the \# between 2 TKAs a risk factor? - No
+
+##### \* boxplot of \# days between 2 TKAs
+
+```{r echo = FALSE}
+
+MUA_data1_1 <- MUA_data1 %>%  select(date_diff,C_MUA)
+MUA_data1_1 %>% select(date_diff,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+ggplot(data = MUA_data1, aes(x = date_diff, y=C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(x = "# days between 2 TKAs",y = "C_MUA including Bilateral TKAs", fill=NULL)+ theme(legend.position="none")
+
+
+
+
+MUA_data1_1 <- MUA_data1 %>%
+  filter(BTKA == "No") %>% 
+  select(date_diff,C_MUA)
+MUA_data1_1 %>% select(date_diff,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+MUA_data1 %>% filter(BTKA == "No") %>% 
+  ggplot(aes(x = date_diff, y=C_MUA)) +        
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(x = "# days between 2 TKAs",y = "C_MUA excluding Bilateral TKAs", fill=NULL)+ theme(legend.position="none")
+
+
+```
+
+```{r}
+#Model with  MUA predicting C_mua with time
+
+cor(MUA_data1$C_MUA_bi,MUA_data1$date_diff)
+
+
+mua_glm1 = glm(C_MUA ~ date_diff, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ date_diff, data= MUA_data1[MUA_data1$BTKA=="No",], family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA +date_diff, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(C_MUA ~ (MUA +date_diff)^2, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+```
+
+the correlation between days between 2TKAs and C_MUA is close to 0. In logistic regression model, the days between 2 TKAs is insignificant
+
+let's see patients who got the 2nd TKA within 645 days
+
+```{r}
+# let's see patients who got the 2nd TKA within 645 days
+summary(as.vector(MUA_data1$date_diff))   #3rd Q : 645
+
+cor(MUA_data1[MUA_data1$date_diff<645, ]$C_MUA_bi,MUA_data1[MUA_data1$date_diff<645, ]$date_diff)
+
+mua_glm1 = glm(C_MUA ~ date_diff, data= MUA_data1[MUA_data1$date_diff<645&&MUA_data1$BTKA=="No", ], family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA+date_diff+ MUA*date_diff, data= MUA_data1[MUA_data1$date_diff<645, ], family = "binomial")
+summary(mua_glm1)
+# getting obvious that date_diff is insignificant 
+```
+
+Even though the correlation between days between 2TKAs and C_MUA changed from negative to positive, it is still close to 0. When we looked into the days within 3rd quartiles, it is getting obvious that date_diff is insignificant
+
+-   If the patient got Bilateral TKA, is the risk of getting MUA significantly higher? : No.
+
+```{r}
+# If the patient got Bilateral TKA, is the risk of getting MUA significantly higher? No. 
+MUA_data1$BTKA <- ifelse(MUA_data1$date_diff==0, "Yes","No")   
+mua_glm1 = glm(as.factor(Group2) ~ as.factor(BTKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ as.factor(BTKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+```
+
+-   want to mention about below in the presentation?
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+# 1yr/2yr/more than 2yr 
+MUA_data1$yeardiff <- ifelse(MUA_data1$date_diff<366, "1yr",
+                             ifelse(MUA_data1$date_diff<365*2,"2yr","more than 2yrs"))  
+#MUA_data1$yeardiff<- ordered(as.factor(MUA_data1$yeardiff), levels = c("1yr", "2yr", "more than 2yrs"))
+mua_glm1 = glm(C_MUA ~ yeardiff, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+# decision tree 
+MUA_tree <- tree(C_MUA ~ MUA +date_diff,data= MUA_data1)
+summary(MUA_tree)  # too many nodes and there is no way to prune. 
+
+MUA_tree1 <- tree(C_MUA ~ MUA +date_diff,data= MUA_data1[MUA_data1$date_diff<645, ])
+summary(MUA_tree1)
+
+MUA_tree2 <- tree(C_MUA ~ MUA +BTKA,data= MUA_data1)
+summary(MUA_tree2)  # BTKA is not used in the decision tree. 
+
+```
+
+------------------------------------------------------------------------
+
+#### Q3 Demographics and comorbidities factors?
+
+##### (1) sex : No
+
+a.  EDA
+
+```{r sexEDA, echo = FALSE}
+
+  ggplot(data = MUA_data1) +
+    geom_bar(mapping = aes(x = C_MUA, fill=sex), position = position_dodge(preserve = "single"))+
+    labs(x = "# contraletral MUA patients in each sex") 
+
+# proportion of MUA in each gender 
+MUA_data1 %>% group_by(sex) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~sex) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+  #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "% of contraletral MUA patients in each sex", y=NULL)+
+  theme(legend.position="none")
+```
+
+b. chi-squared test 
+```{r}
+names(MUA_data1)
+sex <- MUA_data1[,c(1:4,6)]
+sex_table <- table(sex[,4:5])
+
+# fisher's exact test for count data 
+test <-chisq.test(sex_table)
+fisher.test(sex_table)
+fisher.test(table(MUA_data1$C_MUA, MUA_data1$sex))
+
+# combine plot and statistical test with ggbarstats
+library(ggplot2)
+library(ggstatsplot)
+ggbarstats(
+  MUA_data1,C_MUA,sex,
+  results.subtitle = FALSE, xlab = "Sex", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(fisher.test(sex_table)$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+```
+
+
+
+b.  fitting model
+
+```{r sexModel}
+##### add sex variable  - insignificant #######
+mua_glm1 = glm(C_MUA ~ sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 <- glm(as.factor(Group2) ~ sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA +sex, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+```
+
+The sex variable is insignificant in these models.
+
+##### (2) Age
+
+a.  EDA
+
+```{r ageEDA, echo = FALSE}
+# histogram
+ggplot(data = MUA_data1, aes(x = age_C_TKA, fill=C_MUA)) +
+  geom_histogram(binwidth = 4,color="#e9ecef")+
+  scale_fill_manual(values=c("#69b3a2", "#404080")) +
+  labs(y = NULL, fill=NULL, x= "age")+ theme(legend.position="none")
+
+# boxplot 
+ggplot(data = MUA_data1, aes(x = age_C_TKA, y = C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+ # geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
+  coord_flip()+
+  labs(y = NULL, fill=NULL, x="age")+ theme(legend.position="none")
+
+# proportion of C_MUA when the patients are in 50s or 60s 8/391 : 0.02046036
+MUA_data1 %>% filter(age_C_TKA >50 & age_C_TKA <70) %>%  count(C_MUA) %>% # No:391/Yes: 8
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA when in 50s or 60s", y=NULL)+
+  theme(legend.position="none")
+
+# proportion of C_MUA when the patients are in 40s or over 70s  2/241 : 0.008298755
+MUA_data1 %>% filter(age_C_TKA <50 | age_C_TKA >70) %>%  count(C_MUA) %>%  # No:241/Yes: 2
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  #facet_wrap(~ MUA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "Contraletral MUA when in younger than 50s or older than 60s", y=NULL)+
+  theme(legend.position="none")
+
+
+MUA_data1 %>%  group_by(Fac_age_C_TKA) %>% count(C_MUA) %>%  # No:241/Yes: 2
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ Fac_age_C_TKA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "% of Contraletral MUA patients in each age group", y=NULL)+
+  theme(legend.position="none")
+
+
+```
+
+b.
+```{r}
+# fisher's exact test for count data 
+test <- fisher.test(table(MUA_data1$C_MUA, MUA_data1$Fac_age_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+library(ggstatsplot)
+ggbarstats(
+  MUA_data1,C_MUA,Fac_age_C_TKA,
+  results.subtitle = FALSE,  xlab = "Age Group", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+```
+
+
+c.  regression model
+
+```{=html}
+<!-- -->
+```
+(i) with numerical age variable
+
+```{r}
+mua_glm1 = glm(C_MUA ~ age_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA +age_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)  #exp(-0.04859) = 0.9525716 : as age increase 1, the odds of getting C_MUA decrease 5%..? Not true
+# numeric age variable seems insignificant and not to make sense. EDA shows that when the patients are in 50s, 60s, the odds of getting MUA seems higher 
+```
+
+(ii) with factorized age variable
+
+```{r}
+
+MUA_data1$Fac_age_C_TKA <- ifelse(MUA_data1$age_C_TKA<50,"less50",
+                                   ifelse(MUA_data1$age_C_TKA<60, "50s",
+                                     ifelse(MUA_data1$age_C_TKA<70, "60s","over70s")))
+
+MUA_data1$Fac_age_C_TKA2 <- ifelse(MUA_data1$Fac_age_C_TKA %in% c("50s","60s"),"50/60","younger than 50|older than 60")
+
+MUA_data1 %>% group_by(Fac_age_C_TKA2) %>%  count(Group2)
+
+mua_glm1 = glm(C_MUA ~ Fac_age_C_TKA2, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA +Fac_age_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ (MUA +Fac_age_C_TKA2)^2, data= MUA_data1, family = "binomial")
+summary(mua_glm1) # interaction term is insignificant 
+
+
+
+
+
+```
+
+-   when the patients are in 50s or 60s, age is significant. interaction is insignificant
+-   keep age in the model.
+
+##### (3) Race
+
+a.  EDA
+
+```{r RaceEDA, echo = FALSE}
+ggplot(data = MUA_data1) +
+  geom_bar(mapping = aes(fill = redu_race, x=C_MUA),position = position_dodge(preserve = "single"))+
+  labs(x = NULL, title = "Race")
+
+unique(MUA_data1$race)
+
+# proportion of C_MUA by race 
+MUA_data1 %>% group_by(redu_race) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~redu_race) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+```
+
+b. chi-squared test 
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$redu_race))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,redu_race,
+  results.subtitle = FALSE,  xlab = "Race", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+
+```
+
+
+
+b.  fitting model
+
+```{r raceModel}
+#############################  race variable
+# the stand.error is way tooooooooo big..
+# race black is significant..? 
+
+mua_glm1 <- glm(C_MUA ~ as.factor(redu_race), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ MUA+ as.factor(redu_race), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~ (MUA+ as.factor(redu_race))^2, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+#mua_glm1 = glm(C_MUA ~ MUA+ as.factor(redu_race)+Fac_age_C_TKA, data= #MUA_data1, family = "binomial")
+#summary(mua_glm1)
+```
+
+##### (4). Ethnicity
+
+a.  EDA
+
+```{r EthnicityEDA, echo=FALSE}
+ggplot(data = MUA_data1) +
+  geom_bar(mapping = aes(x = C_MUA, fill=ethnicity),position = position_dodge(preserve = "single"))+
+  labs(x = NULL, title = "Ethnicity" ) 
+
+# proportion of C_MUA in each ethnicity
+MUA_data1 %>% group_by(ethnicity) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ethnicity) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 5)+ 
+  labs(x = "proportion of C_MUA in each ethnicity", y=NULL)+
+  theme(legend.position="none")
+
+```
+
+b. chi-squared test 
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ethnicity))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,ethnicity,
+  results.subtitle = FALSE,  xlab = "Ethnicity", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+
+```
+
+
+
+C. regression model
+
+```{r EthnicityModel}
+############################  ethnicity variable
+mua_glm1 = glm(C_MUA ~  ethnicity, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+mua_glm1 = glm(C_MUA ~  MUA+ethnicity, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+# the stand.error is tooooooooo big..
+```
+
+
+##### (5) Insurance
+a.EDA
+```{r InsuranceEDA, echo =FALSE}
+# when the 2nd TKA 
+ggplot(data = MUA_data1) +
+  geom_bar(mapping = aes(x = C_MUA, fill=Insurance_C_TKA),position = position_dodge(preserve = "single"))+
+  labs(x = NULL) 
+
+
+# proportion of MUA in each insurance type
+MUA_data1 %>% group_by(Insurance_C_TKA) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~Insurance_C_TKA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = NULL, y=NULL)+
+  theme(legend.position="none")
+```
+
+b. chi-squared test 
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$Insurance_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,Insurance_C_TKA,
+  results.subtitle = FALSE,  xlab = "Insurance", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+
+```
+
+
+ c. Regression model 
+```{r InsuranceModel}
+mua_glm1 = glm(C_MUA ~  Insurance_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA+Insurance_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# decision tree 
+MUA_tree <- tree(C_MUA ~ MUA +redu_race+Insurance_C_TKA+Fac_age_C_TKA,data= MUA_data1)
+#summary(MUA_tree) # MUA is the only variable used ..
+```
+
+##### (6) BMI
+a. EDA
+```{r BMIEDA, echo=FALSE}
+
+MUA_data1_1 <- MUA_data1 %>%  select(bmi_C_TKA,C_MUA)
+MUA_data1_1 %>% select(bmi_C_TKA,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+
+
+ggplot(data = MUA_data1, aes(x = bmi_C_TKA, y = C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
+  coord_flip()+
+  labs(y = "Contralateral MUA", fill=NULL)+ theme(legend.position="none")
+
+
+```
+
+b. Regression model 
+```{r BMIModel}
+mua_glm1 = glm(C_MUA ~  bmi_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA+bmi_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+```
+
+
+
+##### (7) tobacco 
+a. EDA
+```{r tobaccoEDA, echo=FALSE}
+  ggplot(data = MUA_data1) +
+  geom_bar(mapping = aes(fill = redu_tobacco_C_TKA, x=C_MUA), position = position_dodge(preserve = "single"))+
+  labs(x = NULL, fill=NULL)
+
+```
+
+b. chi-squared test 
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$redu_tobacco_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,redu_tobacco_C_TKA,
+  results.subtitle = FALSE,xlab = "Tobacco use", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+
+```
+
+
+b. Regression Model 
+```{r tobaccoModel}
+mua_glm1 = glm(C_MUA ~redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA+redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+```
+
+
+##### (8) ASA
+a. EDA
+```{r ASAEDA, echo = FALSE}
+# histogram
+ggplot(data = MUA_data1, aes(x = ASA_C_TKA, fill=C_MUA)) +
+  geom_histogram(binwidth = 1,color="#e9ecef")+
+  scale_fill_manual(values=c("#69b3a2", "#404080")) +
+  labs(x = "ASA",y = NULL, fill=NULL)+ theme(legend.position=c(0.1, 0.8))
+
+# proportion of MUA in each ASA rate
+MUA_data1 %>% group_by(ASA_C_TKA) %>%  count(C_MUA) %>% 
+  mutate(pct = prop.table(n)) %>% 
+  ggplot(aes(x = C_MUA, y = pct, fill = C_MUA, label = scales::percent(pct))) +
+  geom_col( position = "dodge")+
+  facet_wrap(~ASA_C_TKA) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+    #  vjust = -0.5,    # nudge above top of bar
+    size = 3)+ 
+  labs(x = "proportion of MUA in each ASA", y=NULL)+
+  theme(legend.position="none")
+```
+
+b. fisher
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ASA_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,ASA_C_TKA,
+  results.subtitle = FALSE, xlab = "ASA", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+```
+
+b. Regression model
+```{r ASAmodel}
+mua_glm1 = glm(C_MUA ~ as.factor(ASA_C_TKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+# standard error is too big so reduced the factors into binary
+
+MUA_data1$redu_ASA_C_TKA <- ifelse(MUA_data1$ASA_C_TKA %in% c(2,3),"2/3","else")
+
+mua_glm1 = glm(C_MUA ~  as.factor(redu_ASA_C_TKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA+ as.factor(redu_ASA_C_TKA), data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+```
+
+
+#####  (9) los
+a. EDA
+```{r losEDA, echo=FALSE}
+
+MUA_data1_1 <- MUA_data1 %>%  select(los_C_TKA,C_MUA)
+MUA_data1_1 %>% select(los_C_TKA,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+
+ggplot(data = MUA_data1, aes(x = los_C_TKA, y=C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(y = "C MUA", x= "Length of Stay", fill=NULL)+ theme(legend.position="none")
+
+```
+
+
+b. regression model 
+```{r losModel}
+mua_glm1 = glm(C_MUA ~  los_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA + los_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  (MUA + los_C_TKA)^2, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+```
+
+
+##### (10) operation time 
+
+a. EDA
+```{r optimeEDA, echo = FALSE}
+
+MUA_data1_1 <- MUA_data1 %>%  select(op_time_C_TKA,C_MUA)
+MUA_data1_1 %>% select(op_time_C_TKA,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+ggplot(data = MUA_data1, aes(x = op_time_C_TKA, y=C_MUA)) +
+  geom_boxplot(aes(fill=C_MUA))+
+  #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
+  coord_flip()+
+  labs(x = "2nd TKA Operation Time (mins)",y = NULL, fill=NULL)+ theme(legend.position="none")
+
+```
+
+
+b. Regression model 
+```{r optimeModel}
+mua_glm1 = glm(C_MUA ~  op_time_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+mua_glm1 = glm(C_MUA ~  MUA+op_time_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+```
+
+##### (11) readmission 
+
+a. EDA
+```{r readmissionEDA, echo = FALSE}
+MUA_data1$readmit_90d_C_TKA <- as.factor(MUA_data1$readmit_90d_C_TKA)
+
+MUA_data1_1 <- MUA_data1 %>%  select(readmit_90d_C_TKA,C_MUA)
+MUA_data1_1 %>% select(readmit_90d_C_TKA,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+
+  ggplot(data = MUA_data1) +
+    geom_bar(mapping = aes(x = C_MUA, fill=readmit_90d_C_TKA), position = position_dodge(preserve = "single"))+
+    labs(x = "# contraletral MUA patients")  +
+    theme(legend.position = c(0.8, 0.8)) + 
+    scale_fill_discrete(labels=c('No readmission', 'readmission'))
+  
+
+
+
+```
+b. fisher
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$readmit_90d_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,readmit_90d_C_TKA, xlab = "Readmission in 90 days", perc.k = 2L,
+  results.subtitle = FALSE,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+```
+
+c. Regression model
+```{r Readmissionmodel}
+mua_glm1 = glm(C_MUA ~  readmit_90d_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+mua_glm1 = glm(C_MUA ~  MUA+ readmit_90d_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+```
+
+##### (13) ER visit within 90 days 
+
+
+a. EDA
+```{r EREDA, echo = FALSE}
+MUA_data1$ed_90d_C_TKA <- as.factor(MUA_data1$ed_90d_C_TKA)
+
+MUA_data1_1 <- MUA_data1 %>%  select(ed_90d_C_TKA,C_MUA)
+MUA_data1_1 %>% select(ed_90d_C_TKA,C_MUA) %>% 
+  tbl_summary(by = C_MUA) %>% #, statistic = c(age)~"{mean}({min},{max})")  %>% 
+  add_n() %>% modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+  ggplot(data = MUA_data1) +
+    geom_bar(mapping = aes(x = C_MUA, fill=ed_90d_C_TKA), position = position_dodge(preserve = "single"))+
+    labs(x = "# contraletral MUA patients")  +
+    theme(legend.position = c(0.8, 0.8)) + 
+    scale_fill_discrete(labels=c('No ER', 'ER'))
+  
+
+```
+
+b. fisher
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ed_90d_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,ed_90d_C_TKA,
+  results.subtitle = FALSE,  xlab = "ER visit in 90 days", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+```
+
+C. Regression model
+```{r ERmodel, message = FALSE, warning = FALSE}
+mua_glm1 = glm(C_MUA ~  ed_90d_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+
+
+mua_glm1 = glm(C_MUA ~  MUA+ ed_90d_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm1)
+```
+
+
+
+
+##### (12) comorbidities 
+a. EDA
+```{r message = FALSE, warning = FALSE}
+# summary
+Comor_ratio_C_MUA <- apply(MUA_data1[MUA_data1$C_MUA=="Yes",c(82:89,91:101,103)],2,sum)/10
+Comor_ratio_NO_C_MUA<- round(apply(MUA_data1[MUA_data1$C_MUA!="Yes",c(82:89,91:101,103)],2,sum)/655,2)
+knitr::kable(cbind(Comor_ratio_C_MUA,Comor_ratio_NO_C_MUA))
+
+```
+
+
+b. Lasso
+
+```{r ComorbiditiesLasso, message = FALSE, warning = FALSE}
+#Lasso model  - comorbidities 
+library(glmnet)
+x1matrix = data.matrix(MUA_data1[,c(82:89,91:101,103)]) 
+colnames(x1matrix)<- c(str_sub(colnames(x1matrix),end=-7))
+
+
+
+C_MUA = as.vector(MUA_data1$C_MUA_bi)
+
+#Finding lambda
+k = 5
+set.seed(987)
+cv.lasso<- cv.glmnet(x1matrix, C_MUA, alpha=1, family = "binomial")
+lasso.mod = glmnet(x1matrix, C_MUA, alpha=1,family = "binomial",lambda=cv.lasso$lambda.min)
+lasso.coef <- predict(lasso.mod, type = "coefficients", s=cv.lasso$lambda.min)
+paste0(round(lasso.coef@x,4),"X",lasso.coef@i, collapse=" + ")
+
+```
+Lasso regression model picked blood transfusion and Hemiplegia
+
+* correlation between diagnosed disease and contralateral MUA 
+```{r comoCorrelationtable, echo = FALSE, warning = FALSE}
+library(ggcorrplot)
+ggcorrplot(cor(cbind(x1matrix, C_MUA)),colors = c("#6D9EC1", "white", "#E46726"),type = "lower")
+```
+The predictor that lasso picked matches with correlation between C_MUA and diseases
+
+#### So final model is..?
+
+```{r finalModel, eval=FALSE, warning=FALSE, include=FALSE}
+mua_glm <- glm(C_MUA ~ MUA+Fac_age_C_TKA+MUA_data1$redu_race+los_C_TKA+blood_transfusion_C_TKA+Hemiplegia_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+
+mua_glm <- glm(C_MUA ~ MUA+Fac_age_C_TKA+MUA_data1$redu_race+blood_transfusion_C_TKA+Hemiplegia_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+mua_glm <- glm(C_MUA ~ MUA+Fac_age_C_TKA+blood_transfusion_C_TKA+Hemiplegia_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+mua_glm <- glm(C_MUA ~ MUA+Fac_age_C_TKA+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+
+mua_glm <- glm(C_MUA ~ MUA+blood_transfusion_C_TKA+Hemiplegia_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+
+mua_glm <- glm(C_MUA ~ MUA+blood_transfusion_C_TKA, data= MUA_data1, family = "binomial")
+summary(mua_glm)
+
+
+
+
+```
+
+##### (1) LASSO 
+###### a. model 
+```{r message = FALSE, warning = FALSE, eval = FALSE}
+library(glmnet)
+names(MUA_data1)
+MUA_data2 = MUA_data1[,c(109,108,6,9,75:78, 80:89,91:104,106,116,118)]
+MUA_data2$ASA_C_TKA<-as.factor(MUA_data2$ASA_C_TKA)
+y = MUA_data2$C_MUA_bi
+
+# Fac_age_C_TKA(116) is included instead of age_C_TKA(74), Diabetes_cc_C_TKA(90) is removed b/c it's duplicated with Diabetes_no_cc_C_TKA
+# 108: MUA_bi,  6 : sex, 9: ethnicity, 75: bmi_C_TKA, 76: tobacco_C_TKA,  77: Insurance_C_TKA, 78: los_C_TKA, 80:ASA_C_TKA, 81: op_time_C_TKA, 82~103: comorbidities, 104:readmit_90d_C_TKA, 106:ed_90d_C_TKA,116:Fac_age_C_TKA, 118: redu_race       
+
+d <- as.data.frame(MUA_data2)
+options(na.action="na.pass")
+m <- model.matrix(C_MUA_bi ~ ., data=d)[,-1]
+
+
+set.seed(1234)
+cv.out = cv.glmnet(m, y, alpha=1,family="binomial")
+bestlam = cv.out$lambda.min
+
+lasso.mod = glmnet(m, y, alpha= 1, lambda = bestlam,family="binomial")
+coef(lasso.mod)
+paste0(round(coef(lasso.mod)@x,4),"X",coef(lasso.mod)@i, collapse=" + ")
+
+
+##### ROC
+#lasso.mod = lasso mod using bestlam from cv.glmnet
+#m = original model matrix
+predict_fit = predict(lasso.mod, m, type = "response")
+
+library(pROC)
+roc_score=roc(predictor=as.vector(predict_fit), response = y ) 
+
+#ROC Plot
+plot(roc_score ,main ="ROC curve -Lasso Regression") 
+roc_score$auc #AUC score
+
+##### Bootstrapping AUC to find 95% CI
+#Finding Bootstrapped AUC confidence intervals
+library(fbroc)
+boot_roc = boot.roc(as.numeric(predict_fit), as.logical(as.numeric(y)), n.boot = 10000)
+plot(boot_roc)
+
+w=perf(boot_roc, "auc") #Measuring performance
+w #AUC confidence interval
+hist(w$boot.results, main = "Bootstrapped AUC Values", xlab = "Area Under Curve") #Histogram of bootstrapped AUC
+
+```
+
+-4.6632 + 1.3594MUA_bi + 1.2333Insurance_C_TKAWork_Comp + 2.1177blood_transfusion_C_TKA
+
+
+###### b. leave one out cross validation 
+```{r message = FALSE, warning = FALSE, eval=FALSE}
+library(glmnet)
+#y = MUA_data1$C_MUA_bi
+#MUA_data2 = MUA_data1[,c(108, 6, 9,75:78, 80:89,91:104,106,116,118)] # Fac_age_C_TKA(116) is included instead of age_C_TKA(74), Diabetes_cc_C_TKA(90) is removed b/c it's duplicated with Diabetes_no_cc_C_TKA
+# 108: MUA_bi,  6 : sex, 9: ethnicity, 75: bmi_C_TKA, 76: tobacco_C_TKA,  77: Insurance_C_TKA, 78: los_C_TKA, 80:ASA_C_TKA, 81: op_time_C_TKA, 82~103: comorbidities, 104:readmit_90d_C_TKA, 106:ed_90d_C_TKA,116:Fac_age_C_TKA, 118: redu_race       
+#MUA_data2$ASA_C_TKA<-as.factor(MUA_data2$ASA_C_TKA)
+
+#d <- data.frame(x=MUA_data2, y=y)
+#m <- model.matrix(y ~ ., data=d)[,-1]
+
+
+
+pred_prob <- c()
+for(i in 1:nrow(d)){
+y_train = d[-i,]$C_MUA_bi
+x_train = m[-i,]
+
+y_test = d[i,]$C_MUA_bi
+x_test = m[i,]
+
+set.seed(1234)
+cv.out = cv.glmnet(x_train, y_train, alpha =1,family="binomial", nfolds=5)
+bestlam = cv.out$lambda.min
+
+lasso.mod = glmnet(x_train, y_train, alpha= 1, lambda = bestlam,family="binomial")
+pred_prob[i] <- predict(lasso.mod,s = bestlam, newx = x_test,type="response")
+}
+
+
+pred_C_MUA<-cbind(pred_prob,y)
+summary(pred_C_MUA[y==0,1])
+summary(pred_C_MUA[y==1,1])
+
+
+
+
+library(pROC)
+roc_score_predictpower=roc(predictor=as.vector(pred_prob), response = y ) 
+
+#ROC Plot
+plot(roc_score_predictpower ,main ="ROC curve -Lasso Regression(LOOCV) ") 
+roc_score_predictpower$auc #AUC score
+
+
+
+library(fbroc)
+boot_roc = boot.roc(as.numeric(pred_prob), as.logical(as.numeric(y)), n.boot = 10000)
+plot(boot_roc)
+
+w=perf(boot_roc, "auc") #Measuring performance
+w #AUC confidence interval
+hist(w$boot.results, main = "Bootstrapped AUC Values", xlab = "Area Under Curve") #Histogram of bootstrapped AUC
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
