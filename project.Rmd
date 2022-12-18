@@ -20,6 +20,8 @@ library(gtsummary)
 #### data setup
 MUA_data = read_excel("TKAMUA5_IDSET_Nov02.xlsx", sheet = "Final", range = cell_rows(3:668), col_names=TRUE)
 
+unique(MUA_data$financial_class)
+
 #Changing MUA/C_MUA in to binary 1 or 0
 MUA_data1 = mutate(MUA_data,
   MUA_bi= ifelse(MUA == "Yes", 1, 0),
@@ -74,6 +76,8 @@ MUA_data1$tobacco_C_TKA<- ifelse(is.na(MUA_data1$tobacco_C_TKA)==TRUE, MUA_data1
 MUA_data1$redu_tobacco <- ifelse(MUA_data1$tobacco %in% c("Passive","Yes"), "Yes","No")
 MUA_data1$redu_tobacco_C_TKA <- ifelse(MUA_data1$tobacco_C_TKA %in% c("Passive","Yes"), "Yes","No")
 
+library(tidyverse)
+MUA_data1 %>% group_by(tobacco) %>% count()
 
 ### ASA
 
@@ -91,7 +95,7 @@ MUA_data1$los_C_TKA<- ifelse(is.na(MUA_data1$los_C_TKA)==TRUE, MUA_data1$los,MUA
 
 ```
 
-#### Q1: MUA is a risk factor of C_MUA? - Yes
+o #### Q1: MUA is a risk factor of C_MUA? - Yes
 
 ```{r message = FALSE, warning = FALSE}
 #Pearson's Chi-squared test
@@ -315,12 +319,12 @@ library(ggplot2)
 library(ggstatsplot)
 ggbarstats(
   MUA_data1,C_MUA,sex,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE, xlab = "Sex", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(fisher.test(sex_table)$p.value, 3))
   )
-) + scale_fill_manual(values=c("#69b3a2", "#404080"))
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
 
 ```
 
@@ -351,14 +355,14 @@ a.  EDA
 ggplot(data = MUA_data1, aes(x = age_C_TKA, fill=C_MUA)) +
   geom_histogram(binwidth = 4,color="#e9ecef")+
   scale_fill_manual(values=c("#69b3a2", "#404080")) +
-  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+  labs(y = NULL, fill=NULL, x= "age")+ theme(legend.position="none")
 
 # boxplot 
 ggplot(data = MUA_data1, aes(x = age_C_TKA, y = C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
  # geom_point(aes(group=C_MUA), position = position_dodge(preserve = "single")) +
   coord_flip()+
-  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+  labs(y = NULL, fill=NULL, x="age")+ theme(legend.position="none")
 
 # proportion of C_MUA when the patients are in 50s or 60s 8/391 : 0.02046036
 MUA_data1 %>% filter(age_C_TKA >50 & age_C_TKA <70) %>%  count(C_MUA) %>% # No:391/Yes: 8
@@ -408,7 +412,7 @@ test <- fisher.test(table(MUA_data1$C_MUA, MUA_data1$Fac_age_C_TKA))
 library(ggstatsplot)
 ggbarstats(
   MUA_data1,C_MUA,Fac_age_C_TKA,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE,  xlab = "Age Group", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -473,6 +477,7 @@ ggplot(data = MUA_data1) +
   geom_bar(mapping = aes(fill = redu_race, x=C_MUA),position = position_dodge(preserve = "single"))+
   labs(x = NULL, title = "Race")
 
+unique(MUA_data1$race)
 
 # proportion of C_MUA by race 
 MUA_data1 %>% group_by(redu_race) %>%  count(C_MUA) %>% 
@@ -495,7 +500,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$redu_race))
 # combine plot and statistical test with ggbarstats
 ggbarstats(
   MUA_data1,C_MUA,redu_race,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE,  xlab = "Race", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -558,7 +563,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ethnicity))
 # combine plot and statistical test with ggbarstats
 ggbarstats(
   MUA_data1,C_MUA,ethnicity,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE,  xlab = "Ethnicity", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -590,6 +595,7 @@ ggplot(data = MUA_data1) +
   geom_bar(mapping = aes(x = C_MUA, fill=Insurance_C_TKA),position = position_dodge(preserve = "single"))+
   labs(x = NULL) 
 
+
 # proportion of MUA in each insurance type
 MUA_data1 %>% group_by(Insurance_C_TKA) %>%  count(C_MUA) %>% 
   mutate(pct = prop.table(n)) %>% 
@@ -611,7 +617,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$Insurance_C_TKA))
 # combine plot and statistical test with ggbarstats
 ggbarstats(
   MUA_data1,C_MUA,Insurance_C_TKA,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE,  xlab = "Insurance", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -670,6 +676,7 @@ summary(mua_glm1)
 ```
 
 
+
 ##### (7) tobacco 
 a. EDA
 ```{r tobaccoEDA, echo=FALSE}
@@ -679,14 +686,33 @@ a. EDA
 
 ```
 
+b. chi-squared test 
+```{r}
+# fisher's exact test for count data 
+test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$redu_tobacco_C_TKA))
+
+# combine plot and statistical test with ggbarstats
+ggbarstats(
+  MUA_data1,C_MUA,redu_tobacco_C_TKA,
+  results.subtitle = FALSE,xlab = "Tobacco use", perc.k = 2L,
+  subtitle = paste0(
+    "Fisher's exact test", ", p-value = ",
+    ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
+  )
+) + scale_fill_manual(values = c( "darkturquoise","coral"))
+
+
+```
+
 
 b. Regression Model 
 ```{r tobaccoModel}
-mua_glm1 = glm(C_MUA ~  redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
+mua_glm1 = glm(C_MUA ~redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
 
 mua_glm1 = glm(C_MUA ~  MUA+redu_tobacco_C_TKA, data= MUA_data1, family = "binomial")
 summary(mua_glm1)
+
 
 ```
 
@@ -698,7 +724,7 @@ a. EDA
 ggplot(data = MUA_data1, aes(x = ASA_C_TKA, fill=C_MUA)) +
   geom_histogram(binwidth = 1,color="#e9ecef")+
   scale_fill_manual(values=c("#69b3a2", "#404080")) +
-  labs(y = NULL, fill=NULL)+ theme(legend.position="none")
+  labs(x = "ASA",y = NULL, fill=NULL)+ theme(legend.position=c(0.1, 0.8))
 
 # proportion of MUA in each ASA rate
 MUA_data1 %>% group_by(ASA_C_TKA) %>%  count(C_MUA) %>% 
@@ -721,7 +747,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ASA_C_TKA))
 # combine plot and statistical test with ggbarstats
 ggbarstats(
   MUA_data1,C_MUA,ASA_C_TKA,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE, xlab = "ASA", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -762,7 +788,7 @@ ggplot(data = MUA_data1, aes(x = los_C_TKA, y=C_MUA)) +
   geom_boxplot(aes(fill=C_MUA))+
   #geom_point(aes(group=C_MUA), position = position_dodge(width = 0.75)) +
   coord_flip()+
-  labs(y = "C_MUA", fill=NULL)+ theme(legend.position="none")
+  labs(y = "C MUA", x= "Length of Stay", fill=NULL)+ theme(legend.position="none")
 
 ```
 
@@ -841,7 +867,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$readmit_90d_C_TKA))
 
 # combine plot and statistical test with ggbarstats
 ggbarstats(
-  MUA_data1,C_MUA,readmit_90d_C_TKA,
+  MUA_data1,C_MUA,readmit_90d_C_TKA, xlab = "Readmission in 90 days", perc.k = 2L,
   results.subtitle = FALSE,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
@@ -890,7 +916,7 @@ test<- fisher.test(table(MUA_data1$C_MUA, MUA_data1$ed_90d_C_TKA))
 # combine plot and statistical test with ggbarstats
 ggbarstats(
   MUA_data1,C_MUA,ed_90d_C_TKA,
-  results.subtitle = FALSE,
+  results.subtitle = FALSE,  xlab = "ER visit in 90 days", perc.k = 2L,
   subtitle = paste0(
     "Fisher's exact test", ", p-value = ",
     ifelse(test$p.value < 0.001, "< 0.001", round(test$p.value, 3))
@@ -917,7 +943,7 @@ a. EDA
 # summary
 Comor_ratio_C_MUA <- apply(MUA_data1[MUA_data1$C_MUA=="Yes",c(82:89,91:101,103)],2,sum)/10
 Comor_ratio_NO_C_MUA<- round(apply(MUA_data1[MUA_data1$C_MUA!="Yes",c(82:89,91:101,103)],2,sum)/655,2)
-cbind(Comor_ratio_C_MUA,Comor_ratio_NO_C_MUA)
+knitr::kable(cbind(Comor_ratio_C_MUA,Comor_ratio_NO_C_MUA))
 
 ```
 
@@ -1045,6 +1071,8 @@ library(glmnet)
 #d <- data.frame(x=MUA_data2, y=y)
 #m <- model.matrix(y ~ ., data=d)[,-1]
 
+
+
 pred_prob <- c()
 for(i in 1:nrow(d)){
 y_train = d[-i,]$C_MUA_bi
@@ -1063,8 +1091,9 @@ pred_prob[i] <- predict(lasso.mod,s = bestlam, newx = x_test,type="response")
 
 
 pred_C_MUA<-cbind(pred_prob,y)
-median(pred_C_MUA[y==0,1])
-median(pred_C_MUA[y==1,1])
+summary(pred_C_MUA[y==0,1])
+summary(pred_C_MUA[y==1,1])
+
 
 
 
@@ -1074,6 +1103,18 @@ roc_score_predictpower=roc(predictor=as.vector(pred_prob), response = y )
 #ROC Plot
 plot(roc_score_predictpower ,main ="ROC curve -Lasso Regression(LOOCV) ") 
 roc_score_predictpower$auc #AUC score
+
+
+
+library(fbroc)
+boot_roc = boot.roc(as.numeric(pred_prob), as.logical(as.numeric(y)), n.boot = 10000)
+plot(boot_roc)
+
+w=perf(boot_roc, "auc") #Measuring performance
+w #AUC confidence interval
+hist(w$boot.results, main = "Bootstrapped AUC Values", xlab = "Area Under Curve") #Histogram of bootstrapped AUC
+
+
 
 ```
 
